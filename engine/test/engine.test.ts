@@ -90,3 +90,66 @@ test("azione su partita finita => ok:false", () => {
   const r = applica(stato, { t: "avanzaFase" });
   expect(r.ok).toBe(false);
 });
+
+test("dopo scarto valido, avanzaFase passa il turno", () => {
+  let stato = avvia();
+  const extra = stato.giocatori[0].mazzo.slice();
+  stato = { ...stato, giocatori: stato.giocatori.map((g, i) => i === 0 ? { ...g, mano: [...g.mano, ...extra], mazzo: [] } : g) };
+  for (let k = 0; k < 6; k++) {
+    const r = applica(stato, { t: "avanzaFase" });
+    if (!r.ok) return; stato = r.stato;
+  }
+  const daScartare = stato.giocatori[0].mano.length - config.limiteMano;
+  const iids = stato.giocatori[0].mano.slice(0, daScartare).map((c) => c.iid);
+  const sc = applica(stato, { t: "scarta", iids });
+  if (!sc.ok) return;
+  const avanti = applica(sc.stato, { t: "avanzaFase" });
+  expect(avanti.ok).toBe(true);
+  if (!avanti.ok) return;
+  expect(avanti.stato.turnoDi).toBe(1);
+  expect(avanti.stato.fase).toBe("untap");
+});
+
+test("scarta fuori dalla fase end => ok:false", () => {
+  const stato = avvia(); // fase untap
+  const r = applica(stato, { t: "scarta", iids: [] });
+  expect(r.ok).toBe(false);
+});
+
+test("scarta quando non richiesto => ok:false", () => {
+  let stato = avvia();
+  for (let k = 0; k < 6; k++) {
+    const r = applica(stato, { t: "avanzaFase" });
+    if (!r.ok) return; stato = r.stato;
+  }
+  // mano entro il limite => nessuno scarto richiesto
+  const r = applica(stato, { t: "scarta", iids: [] });
+  expect(r.ok).toBe(false);
+});
+
+test("scarta con numero errato di iids => ok:false", () => {
+  let stato = avvia();
+  const extra = stato.giocatori[0].mazzo.slice();
+  stato = { ...stato, giocatori: stato.giocatori.map((g, i) => i === 0 ? { ...g, mano: [...g.mano, ...extra], mazzo: [] } : g) };
+  for (let k = 0; k < 6; k++) {
+    const r = applica(stato, { t: "avanzaFase" });
+    if (!r.ok) return; stato = r.stato;
+  }
+  // fornisce 0 iids quando ne servono >0
+  const r = applica(stato, { t: "scarta", iids: [] });
+  expect(r.ok).toBe(false);
+});
+
+test("scarta con iid non in mano => ok:false", () => {
+  let stato = avvia();
+  const extra = stato.giocatori[0].mazzo.slice();
+  stato = { ...stato, giocatori: stato.giocatori.map((g, i) => i === 0 ? { ...g, mano: [...g.mano, ...extra], mazzo: [] } : g) };
+  for (let k = 0; k < 6; k++) {
+    const r = applica(stato, { t: "avanzaFase" });
+    if (!r.ok) return; stato = r.stato;
+  }
+  const daScartare = stato.giocatori[0].mano.length - config.limiteMano;
+  const iids = new Array(daScartare).fill("iid-inesistente");
+  const r = applica(stato, { t: "scarta", iids });
+  expect(r.ok).toBe(false);
+});
