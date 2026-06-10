@@ -1,0 +1,36 @@
+# Unity generated / cache — non committare
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+[Uu]ser[Ss]ettings/
+[Mm]emoryCaptures/
+
+# Asset meta sync / artefatti
+*.csproj
+*.sln
+*.slnx
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+
+# OS / IDE
+.DS_Store
+.vs/
+.idea/
+.vscode/
+
+# Crash report
+sysinfo.txt
+*.stackdump
+
+# Nota: la DLL dell'engine (Assets/Plugins/Engine/Engine.Core.dll) NON è ignorata:
+# è l'artefatto consumato dal gioco, rigenerabile con engine-cs/build-for-unity.sh

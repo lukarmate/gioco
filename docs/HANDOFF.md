@@ -5,6 +5,69 @@
 
 ---
 
+## ⚠️ DECISIONE 2026-06-10: SI PASSA A UNITY (C#)
+
+**Mira grafica = mix tra Marvel Snap e Magic** (carte juicy, VFX pesanti). Entrambe le referenze sono fatte in Unity. React Native + Skia/Lottie non arriva a quel livello di juice → si combatte il framework.
+
+**Cosa significa:**
+- Il progetto futuro è un **progetto Unity in C#** sul disco.
+- Claude Code lavora editando i file `.cs`/scene/prefab da qui; Luca tiene **Unity Editor aperto** e preme Play per vedere i risultati (loop manuale: io edito → tu testi → mi dici cosa rompe → fixo).
+- **NON** esiste integrazione live: io scrivo file, non "vedo" l'editor. (Esistono MCP server Unity community per leggere console/stato editor — valutare in futuro, setup extra.)
+
+**Cosa si riusa e cosa si butta:**
+- ✅ **Il DESIGN si riusa**: engine come funzione pura, stream di eventi (logica ≠ animazione), `carte.json` come formato dati, flusso socio (markdown → parser → JSON).
+- ✅ **`carte.json` riusabile**: C# legge lo stesso JSON. Il socio continua a scrivere carte in markdown.
+- ❌ **Il CODICE TypeScript si riscrive in C#**: engine E1 (28 test) e parser vanno re-implementati. Le *idee* restano, il codice no.
+
+**Da decidere a inizio prossima sessione (Unity):**
+- ✅ DECISO: **3D** (Universal 3D / URP, stile Snap — carte in spazio 3D + VFX).
+- VFX day-1 o polish finale?
+- Livello Unity/C# di Luca (parte da zero?) → influenza il piano.
+- Setup repo: il progetto Unity sta nello stesso repo o nuovo? (`.gitignore` Unity, Git LFS per asset pesanti).
+- Portare engine puro + parser in C#: primo slice di ripartenza.
+
+**Stato vecchio stack RN/TS (congelato, non cancellato):** parser `motore/` (62%, PR #1 aperta) + engine `engine/` (E1, 28 test, branch `feature/engine-core-e1`). Serve come **reference di design** per la riscrittura C#, non come base di codice viva.
+
+### ✅ FATTO 2026-06-10 (sessione Unity): Engine E1 portato in C#
+- Nuova cartella `engine-cs/` — libreria **C# standalone**, target `netstandard2.1` (importabile da Unity), **zero dipendenze Unity**.
+- `Engine.Core/` = porting fedele di E1: `Stato.cs`, `Eventi.cs`, `Azioni.cs`, `CarteDb.cs`, `Rng.cs` (mulberry32 bit-fedele al TS), `Setup.cs`, `Fasi.cs`, `Engine.cs`. Stile immutabile con `record` + `with` (al posto degli spread TS). `IsExternalInit.cs` = polyfill per init-setter su netstandard2.1.
+- `Engine.Tests/` = 28 test portati (xUnit, net8.0). **28/28 verdi.**
+- Build/test: `cd engine-cs && dotnet test` (sln `Engine.sln`).
+- **.NET SDK 8.0.422** installato in `~/.dotnet` (no sudo, via dotnet-install.sh). Per usarlo: `export PATH="$HOME/.dotnet:$PATH"`.
+- Unity NON ancora installato (Luca a zero Unity, download in corso lato suo). Stile grafico (3D Snap vs 2D Arena) ancora da decidere.
+
+### ✅ FATTO 2026-06-10: Engine E2 (mana + permanenti) in C# — TDD
+Cartella `engine-cs/`, stesso stile (record immutabili, funzione pura). **55/55 test verdi** (28 E1 + 27 E2).
+- ✅ **A — Mana**: `Mana.cs`. `ManaCosto` (record, 5 colori + generico) + `ManaCosto.Parse(string)` che legge i costi del parser ("1 Centro", "2 Est + 1", "1 Centro più 1 mana qualsiasi"). `Mana.Paga(pool, costo)` → pool aggiornato o null (colorato esatto, generico da qualsiasi colore residuo). `ManaProdotto(Quantita, Colori, Scelta)` per gli avamposti. Test: `ManaTests.cs` (8).
+- ✅ **B — GiocaAvamposto**: azione `GiocaAvamposto(iid)`. Solo Main Phase, max 1/turno (`Giocatore.AvampostoGiocatoQuestoTurno`), mano→campo, evento `AvampostoGiocato`. Test: `GiocaAvampostoTests.cs` (5).
+- ✅ **C — AttivaAvamposto**: azione `AttivaAvamposto(iid, scelte?)`. Tappa l'avamposto, produce mana nel pool. `Scelta:false`→colore fisso; `Scelta:true`→terra duale, `scelte` sceglie il colore (validato). Evento `ManaGenerato`. Test: `AttivaAvampostoTests.cs` (7).
+- ✅ **D — GiocaCreatura**: azione `GiocaCreatura(iid)`. Solo Main Phase, paga `ManaCosto` dal pool (`Mana.Paga`), mano→campo, marca summoning sickness (`CartaIstanza.EntrataQuestoTurno=true`). Evento `CreaturaGiocata`. Test: `GiocaCreaturaTests.cs` (5).
+- ✅ **E — untap E2**: l'untap del giocatore attivo azzera `EntrataQuestoTurno` (sickness) di tutte le sue carte in campo e resetta `AvampostoGiocatoQuestoTurno`. Esteso `Fasi.Untap`. Test: `UntapE2Tests.cs` (2).
+
+**Prossimo engine: E3** (interprete effetti — esegue i verbi di carte.json) o **E4** (combattimento: attacco/blocco/danno/morti, usa già summoning sickness + tap di E2).
+
+**Modifiche al modello (E2):** `DefCarta` esteso (Costo/Produzione/Atk/Def opzionali). `StatoPartita.Carte` (dict defId→DefCarta) ora popolato a `iniziaPartita` così l'engine consulta costi/stat durante il gioco. `CartaIstanza.EntrataQuestoTurno`, `Giocatore.AvampostoGiocatoQuestoTurno`. Eventi nuovi: `AvampostoGiocato`, `ManaGenerato`, `CreaturaGiocata`.
+
+### ✅ Unity creato + engine collegato (2026-06-10)
+- Unity Hub + Editor **6.4 (6000.4.10f1) Apple Silicon** installati.
+- **Stile grafico DECISO: 3D** (Snap×Magic). Progetto = template **Universal 3D** (URP), aperto e funzionante.
+- Progetto in **`gioco/GiocoTCG/`** (era stato creato per errore in `~/Gioco Alessandro`, poi spostato nel repo).
+- `gioco/GiocoTCG/.gitignore` Unity standard (ignora `Library/`, `Temp/`, csproj/sln generati, ecc.).
+
+**Wiring engine ↔ Unity (architettura DLL):**
+- Per importare l'engine pulito in Unity, `Engine.Core` è stato reso **senza dipendenze esterne**: `CarteDb` (usa System.Text.Json) estratto in nuovo progetto **`Engine.Data`** (`engine-cs/Engine.Data/`). Tests aggiornati, **55/55 ancora verdi**.
+- `Engine.Core.dll` (netstandard2.1) copiata in **`GiocoTCG/Assets/Plugins/Engine/Engine.Core.dll`** — consumata dal gioco. NON gitignorata (è l'artefatto; rigenerabile).
+- **Rebuild engine per Unity:** `engine-cs/build-for-unity.sh` (build Release + copia DLL). Lanciarlo dopo ogni modifica all'engine, poi tornare in Unity (ricompila da solo).
+- Script di verifica: **`GiocoTCG/Assets/Scripts/EngineSmokeTest.cs`** — gira all'avvio del Play, logga eventi engine in Console. Verifica il collegamento; da cancellare dopo.
+
+**✅ VERIFICATO 2026-06-10:** Play in Unity → Console mostra i log `[Engine]` (partita iniziata, fasi che avanzano, "mano P0 = 2 carte ✅"), zero errori. Engine C# gira dentro Unity. Collegamento end-to-end confermato.
+
+**Prossimo passo:** prima scena vera che renderizza lo stato (campo, mano, carte) consumando lo stream eventi → inizio della view 3D. Poi cancellare `EngineSmokeTest.cs` (era solo verifica).
+
+**Prossimo passo generale:** finire E2 (D+E) in C#, poi creare progetto Unity e collegare l'engine.
+
+---
+
 ## 1. Visione (dove vogliamo arrivare)
 
 App mobile TCG dark-fantasy (React Native + Expo). Catena di costruzione:
@@ -72,6 +135,8 @@ Nessun lavoro attivo in esecuzione. Bivio deciso a inizio prossima sessione:
 ---
 
 ## 5. Decisioni chiave (per non ridiscuterle)
+- **2026-06-10: stack = UNITY (C#)**, non più React Native. Mira grafica Marvel Snap × Magic. Vedi banner in cima al file. Vecchio codice RN/TS = reference di design, congelato.
+- **2026-06-10: OBIETTIVO PRESTAZIONI — deve girare bene anche su telefoni vecchi/economici.** Da tenere in mente nelle scelte grafiche: dosare VFX/particellari, texture non esagerate, evitare post-processing pesante. Il 3D in sé non è il problema (un card game disegna pochi oggetti), ma il "juice" va calibrato per non escludere device low-end. Target: fluido su smartphone di ~7-8 anni fa.
 - Testo carte: **"tutte/ogni creatura" senza proprietario = tutte, tue + avversario**.
 - Avamposti gestiti **per cartella/archetipo**, non parsando la prosa.
 - Engine = **funzione pura** `applica()`, stato immutabile, RNG seedato (replay/multiplayer-ready).
