@@ -64,6 +64,14 @@ Cartella `engine-cs/`, stesso stile (record immutabili, funzione pura). **55/55 
 
 **Prossimo passo:** prima scena vera che renderizza lo stato (campo, mano, carte) consumando lo stream eventi → inizio della view 3D. Poi cancellare `EngineSmokeTest.cs` (era solo verifica).
 
+### 🟡 IN CORSO 2026-06-10: Engine E4 (combattimento) — core fatto, TDD
+**66/66 test verdi** (E1 28 + E2 27 + E4 11).
+- ✅ `DichiaraAttacco(attaccanti)` — solo in fase Combat; valida (creatura propria in campo, non tappata, niente summoning sickness), tappa gli attaccanti, registra `StatoPartita.Combattimento`. Evento `CreaturaAttacca`. Test: `DichiaraAttaccoTests.cs` (5).
+- ✅ `DichiaraBlocchi(assegnazioni)` — mappa attaccante→bloccante; risolve il combattimento (regola 7.3: ATK attaccante vs DEF bloccante → `>` muore bloccante, `=` entrambi, `<` muore attaccante; non bloccato → danno agli HP del difensore). Morti → cimitero. Eventi `CreaturaBlocca`/`CreaturaDistrutta`/`DannoGiocatore`. Chiude `Combattimento`. Test: `CombattimentoTests.cs` (6).
+- **Scope/limiti E4:** solo 2 giocatori (difensore = altro giocatore). Mancano: targeting FFA (3-4p), keyword combat (Travolta/Velocità), sotto-fasi combat formali, morte-giocatore/respawn (→ E6). Modello danno = confronto singolo ATK vs DEF (NON scambio simultaneo MTG), come da regole.
+- **Nota:** se si avanza fase senza risolvere i blocchi, `Combattimento` resta valorizzato (verrà gestito con stack/priorità in E5).
+- Modello: `StatoPartita.Combattimento` (record `Combattimento(Attaccanti)`), eventi combat in `Eventi.cs`, azioni in `Azioni.cs`.
+
 **Prossimo passo generale:** finire E2 (D+E) in C#, poi creare progetto Unity e collegare l'engine.
 
 ---
@@ -120,7 +128,7 @@ Nessun lavoro attivo in esecuzione. Bivio deciso a inizio prossima sessione:
 | E1 | Core loop + eventi | ✅ fatto |
 | E2 | Giocare permanenti + mana (avamposti→mana, creature vanilla, summoning sickness) | ⬜ |
 | E3 | Interprete effetti (esegue i verbi di carte.json) | ⬜ |
-| E4 | Combattimento (attacco/blocco/danno/morti) | ⬜ |
+| E4 | Combattimento (attacco/blocco/danno/morti) | 🟡 core fatto (2p) |
 | E5 | Stack & priorità (Istanti, LIFO) | ⬜ |
 | E6 | Vittoria/obiettivi segreti/respawn 3-vite | ⬜ |
 | E7 | Leader/Alleati (commander, fedeltà, evoluzione) | ⬜ |

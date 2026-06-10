@@ -22,4 +22,10 @@ namespace Engine.Core
     public sealed record AvampostoGiocato(int Giocatore, string Iid) : Evento;
     public sealed record ManaGenerato(int Giocatore, string Iid, IReadOnlyDictionary<string, int> Mana) : Evento;
     public sealed record CreaturaGiocata(int Giocatore, string Iid) : Evento;
+
+    // E4 — combattimento.
+    public sealed record CreaturaAttacca(int Giocatore, string Iid) : Evento;
+    public sealed record CreaturaBlocca(int Giocatore, string Bloccante, string Attaccante) : Evento;
+    public sealed record CreaturaDistrutta(string Iid, int Proprietario) : Evento;
+    public sealed record DannoGiocatore(int Giocatore, int Danno) : Evento;
 }

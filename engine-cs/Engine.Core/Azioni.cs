@@ -38,4 +38,11 @@ namespace Engine.Core
     public sealed record AttivaAvamposto(string Iid, IReadOnlyList<string>? Scelte = null) : Azione;
 
     public sealed record GiocaCreatura(string Iid) : Azione;
+
+    // E4 — combattimento.
+    public sealed record DichiaraAttacco(IReadOnlyList<string> Attaccanti) : Azione;
+
+    // Blocchi: mappa attaccante -> bloccante. Attaccanti non presenti = non bloccati.
+    // Dichiarare i blocchi risolve il combattimento.
+    public sealed record DichiaraBlocchi(IReadOnlyDictionary<string, string> Assegnazioni) : Azione;
 }

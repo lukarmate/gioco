@@ -46,6 +46,10 @@ namespace Engine.Core
                     return AttivaAvampostoImpl(stato, aa.Iid, aa.Scelte);
                 case GiocaCreatura gc:
                     return GiocaCreaturaImpl(stato, gc.Iid);
+                case DichiaraAttacco da:
+                    return DichiaraAttaccoImpl(stato, da.Attaccanti);
+                case DichiaraBlocchi db:
+                    return DichiaraBlocchiImpl(stato, db.Assegnazioni);
                 default:
                     return Risultato.Fallito("azione sconosciuta");
             }
@@ -160,6 +164,121 @@ namespace Engine.Core
             var giocatori = stato.Giocatori.Select((gg, i) => i == att ? nuovo : gg).ToArray();
             var eventi = new List<Evento> { new CreaturaGiocata(att, iid) };
             return Risultato.Successo(stato with { Giocatori = giocatori }, eventi);
+        }
+
+        private static bool ECreatura(StatoPartita stato, CartaIstanza c)
+            => stato.Carte.TryGetValue(c.DefId, out DefCarta? d) && d.Atk != null;
+
+        private static Risultato DichiaraAttaccoImpl(StatoPartita stato, IReadOnlyList<string> attaccanti)
+        {
+            if (stato.Fase != Fase.Combat)
+                return Risultato.Fallito("si attacca solo nella fase di Combattimento");
+            if (attaccanti.Count == 0)
+                return Risultato.Fallito("nessun attaccante dichiarato");
+
+            int att = stato.TurnoDi;
+            Giocatore g = stato.Giocatori[att];
+
+            foreach (string iid in attaccanti)
+            {
+                CartaIstanza? c = g.Campo.FirstOrDefault(x => x.Iid == iid);
+                if (c is null) return Risultato.Fallito($"attaccante non in campo: {iid}");
+                if (!ECreatura(stato, c)) return Risultato.Fallito($"non è una creatura: {iid}");
+                if (c.Tappata) return Risultato.Fallito($"creatura tappata non può attaccare: {iid}");
+                if (c.EntrataQuestoTurno) return Risultato.Fallito($"summoning sickness: {iid}");
+            }
+
+            var setAtt = new HashSet<string>(attaccanti);
+            var campo = g.Campo.Select(c => setAtt.Contains(c.Iid) ? c with { Tappata = true } : c).ToList();
+            var nuovo = g with { Campo = campo };
+            var giocatori = stato.Giocatori.Select((gg, i) => i == att ? nuovo : gg).ToArray();
+            var eventi = attaccanti.Select(iid => (Evento)new CreaturaAttacca(att, iid)).ToList();
+            return Risultato.Successo(
+                stato with { Giocatori = giocatori, Combattimento = new Combattimento(attaccanti) },
+                eventi);
+        }
+
+        private static Risultato DichiaraBlocchiImpl(StatoPartita stato, IReadOnlyDictionary<string, string> assegnazioni)
+        {
+            if (stato.Combattimento is null)
+                return Risultato.Fallito("nessun combattimento in corso");
+
+            int att = stato.TurnoDi;
+            int dif = (att + 1) % stato.Giocatori.Count; // 2p: il difensore è l'altro
+            Giocatore gAtt = stato.Giocatori[att];
+            Giocatore gDif = stato.Giocatori[dif];
+            var attaccanti = stato.Combattimento.Attaccanti;
+
+            // Validazione blocchi.
+            var bloccantiUsati = new HashSet<string>();
+            foreach (var kv in assegnazioni)
+            {
+                if (!attaccanti.Contains(kv.Key))
+                    return Risultato.Fallito($"{kv.Key} non è tra gli attaccanti");
+                CartaIstanza? b = gDif.Campo.FirstOrDefault(c => c.Iid == kv.Value);
+                if (b is null) return Risultato.Fallito($"bloccante non in campo: {kv.Value}");
+                if (!ECreatura(stato, b)) return Risultato.Fallito($"il bloccante non è una creatura: {kv.Value}");
+                if (b.Tappata) return Risultato.Fallito($"bloccante tappato: {kv.Value}");
+                if (!bloccantiUsati.Add(kv.Value))
+                    return Risultato.Fallito($"un bloccante non può bloccare due attaccanti: {kv.Value}");
+            }
+
+            var morti = new HashSet<string>();
+            var eventi = new List<Evento>();
+            int dannoGiocatore = 0;
+
+            int Atk(CartaIstanza c) => stato.Carte[c.DefId].Atk ?? 0;
+            int Def(CartaIstanza c) => stato.Carte[c.DefId].Def ?? 0;
+
+            foreach (string aid in attaccanti)
+            {
+                CartaIstanza? a = gAtt.Campo.FirstOrDefault(c => c.Iid == aid);
+                if (a is null) continue; // già rimosso (non dovrebbe)
+
+                if (assegnazioni.TryGetValue(aid, out string? bid))
+                {
+                    CartaIstanza b = gDif.Campo.First(c => c.Iid == bid);
+                    eventi.Add(new CreaturaBlocca(dif, bid, aid));
+                    int atk = Atk(a), bdef = Def(b);
+                    // Regola 7.3: confronto ATK attaccante vs DEF bloccante.
+                    if (atk > bdef) morti.Add(bid);
+                    else if (atk == bdef) { morti.Add(bid); morti.Add(aid); }
+                    else morti.Add(aid);
+                }
+                else
+                {
+                    dannoGiocatore += Atk(a); // attaccante non bloccato
+                }
+            }
+
+            // Applica morti (sposta in cimitero) + danno al difensore.
+            Giocatore Aggiorna(Giocatore g, bool eDifensore)
+            {
+                var rimaste = new List<CartaIstanza>();
+                var nuoveCimitero = new List<CartaIstanza>(g.Cimitero);
+                foreach (var c in g.Campo)
+                {
+                    if (morti.Contains(c.Iid))
+                    {
+                        nuoveCimitero.Add(c);
+                        eventi.Add(new CreaturaDistrutta(c.Iid, c.Proprietario));
+                    }
+                    else rimaste.Add(c);
+                }
+                int hp = eDifensore ? g.Hp - dannoGiocatore : g.Hp;
+                return g with { Campo = rimaste, Cimitero = nuoveCimitero, Hp = hp };
+            }
+
+            var giocatori = stato.Giocatori
+                .Select((g, i) => Aggiorna(g, i == dif))
+                .ToArray();
+
+            if (dannoGiocatore > 0)
+                eventi.Add(new DannoGiocatore(dif, dannoGiocatore));
+
+            return Risultato.Successo(
+                stato with { Giocatori = giocatori, Combattimento = null },
+                eventi);
         }
 
         private static ManaPool AggiungiMana(ManaPool p, string colore, int q)
