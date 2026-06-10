@@ -62,7 +62,13 @@ Cartella `engine-cs/`, stesso stile (record immutabili, funzione pura). **55/55 
 
 **✅ VERIFICATO 2026-06-10:** Play in Unity → Console mostra i log `[Engine]` (partita iniziata, fasi che avanzano, "mano P0 = 2 carte ✅"), zero errori. Engine C# gira dentro Unity. Collegamento end-to-end confermato.
 
-**Prossimo passo:** prima scena vera che renderizza lo stato (campo, mano, carte) consumando lo stream eventi → inizio della view 3D. Poi cancellare `EngineSmokeTest.cs` (era solo verifica).
+### 🟡 IN CORSO 2026-06-10: prima vista 3D (Unity)
+- `EngineSmokeTest.cs` **rimosso** (verifica completata).
+- Nuovo: **`GiocoTCG/Assets/Scripts/CampoView.cs`** — gira al Play (RuntimeInitialize, niente da configurare in editor). Costruisce una partita via engine, inquadra la camera, crea un tavolo (plane) e disegna la **mano del giocatore 0 come carte 3D** (rettangoli colorati a ventaglio stile Snap). Versione 0: niente arte/testo, solo forme colorate — serve a vedere il ponte engine→grafica.
+- Materiali: helper `MatUrp` usa shader `Universal Render Pipeline/Lit` con `_BaseColor` (URP non usa `_Color`).
+- **✅ VERIFICATO 2026-06-10:** Play → tavolo scuro + 5 carte colorate a ventaglio nel Game view, log `[View] mano P0 (5): Lich, Angelo, Mago, Golem, Fata`. Ponte engine→grafica 3D confermato. Primo pezzo visibile del gioco.
+
+**Prossimi passi vista:** (1) testo/nome sulle carte (TextMeshPro), (2) mostrare anche il campo e gli HP, (3) consumare lo *stream eventi* per animare (pesca, gioca carta), (4) input per giocare le carte. Poi arte vera.
 
 ### 🟡 IN CORSO 2026-06-10: Engine E4 (combattimento) — core fatto, TDD
 **66/66 test verdi** (E1 28 + E2 27 + E4 11).
