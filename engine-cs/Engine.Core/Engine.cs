@@ -162,8 +162,15 @@ namespace Engine.Core
             var campo = g.Campo.Concat(new[] { inCampo }).ToList();
             var nuovo = g with { Mano = mano, Campo = campo, ManaDisponibile = pool };
             var giocatori = stato.Giocatori.Select((gg, i) => i == att ? nuovo : gg).ToArray();
+            var nuovoStato = stato with { Giocatori = giocatori };
             var eventi = new List<Evento> { new CreaturaGiocata(att, iid) };
-            return Risultato.Successo(stato with { Giocatori = giocatori }, eventi);
+
+            // E3 — gli effetti ETB (entra-in-campo) scattano subito dopo l'arrivo in campo.
+            var etb = Effetti.EseguiTrigger(nuovoStato, def, att, iid, Trigger.Etb);
+            nuovoStato = etb.Stato;
+            eventi.AddRange(etb.Eventi);
+
+            return Risultato.Successo(nuovoStato, eventi);
         }
 
         private static bool ECreatura(StatoPartita stato, CartaIstanza c)

@@ -70,6 +70,21 @@ Cartella `engine-cs/`, stesso stile (record immutabili, funzione pura). **55/55 
 
 **Prossimi passi vista:** (1) testo/nome sulle carte (TextMeshPro), (2) mostrare anche il campo e gli HP, (3) consumare lo *stream eventi* per animare (pesca, gioca carta), (4) input per giocare le carte. Poi arte vera.
 
+### ✅ FATTO 2026-06-11: Engine E3a (interprete effetti) — trigger ETB, TDD
+**74/74 test verdi** (E1 28 + E2 27 + E4 11 + E3a 8). File: `Effetti.cs`, test `EffettiEtbTests.cs`.
+- **Modello (AST):** `Effetto(Trigger, Azioni[])`. `Trigger` enum (Etb/Morte/Upkeep/Attacco/Attivata/Passiva). `AzioneEffetto` = DU dei verbi. `Bersaglio(Tipo, Proprietario, Quantificatore, Filtro)` — `Proprietario` relativo al controllore (Tue/Avversario/Tutti), `Quantificatore` (Una/Tutte/Ogni).
+- **Verbi E3a (deterministici):** `Pesca(n)` (il controllore pesca n), `GeneraMana(n,colore)`, `InfliggiDanno(bersaglio giocatore, n)` (gestisce morte→PartitaFinita 2p), `Distruggi(bersaglio creatura)` (Tutte/Ogni), `Mill(bersaglio giocatore, n)`.
+- **Wiring:** trigger **Etb** scatta dentro `GiocaCreaturaImpl` subito dopo l'arrivo in campo; eventi effetto appesi a `CreaturaGiocata`.
+- **Modello esteso:** `DefCarta.Effetti` (lista opzionale). Nuovo evento `CartaMacinata`.
+- **Formato carte.json effetti** (catalogato): `effetti:[{trigger, azioni:[{verbo, ...}]}]`. Trigger nel data: passiva(141), attivata(4), etb(3), morte(2), upkeep(1), attacco(1). Verbi: avamposto(95, = produzione mana già in E2), modifica_stat_combo(14), modifica_stat(10), concedi_keyword(9), pesca(9), genera_mana(4), mill(4), infliggi_danno(3), + distruggi/genera_token/applica_stat/segnalino_stat (1 ciascuno).
+
+**E3b (prossimo, da fare):**
+- **Loader JSON→AST** in `Engine.Data` (parsa `effetti` di carte.json → `List<Effetto>` su `DefCarta`). È il pezzo che collega le carte vere all'interprete.
+- **`passiva`** (effetti statici continui, es. `modifica_stat tutte` / aure): NON one-shot, vanno ricalcolati di continuo → modello a parte (layer di buff sopra le stat base).
+- **Verbi con scelta** (`quantificatore: una` → richiede targeting input, come `scelte` di AttivaAvamposto).
+- **Verbi mancanti:** `modifica_stat`/`applica_stat`/`segnalino_stat` (richiede danno/segnalini persistenti sulle creature), `concedi_keyword`, `genera_token`, `infliggi_danno` a creature (serve modello danno-su-creatura, oggi il combat è confronto istantaneo ATK/DEF).
+- **Altri trigger:** `morte` (su CreaturaDistrutta), `upkeep` (in Fasi.Upkeep), `attacco` (su DichiaraAttacco), `attivata` (nuova azione AttivaAbilita).
+
 ### 🟡 IN CORSO 2026-06-10: Engine E4 (combattimento) — core fatto, TDD
 **66/66 test verdi** (E1 28 + E2 27 + E4 11).
 - ✅ `DichiaraAttacco(attaccanti)` — solo in fase Combat; valida (creatura propria in campo, non tappata, niente summoning sickness), tappa gli attaccanti, registra `StatoPartita.Combattimento`. Evento `CreaturaAttacca`. Test: `DichiaraAttaccoTests.cs` (5).
@@ -133,7 +148,7 @@ Nessun lavoro attivo in esecuzione. Bivio deciso a inizio prossima sessione:
 |---|---|---|
 | E1 | Core loop + eventi | ✅ fatto |
 | E2 | Giocare permanenti + mana (avamposti→mana, creature vanilla, summoning sickness) | ⬜ |
-| E3 | Interprete effetti (esegue i verbi di carte.json) | ⬜ |
+| E3 | Interprete effetti (esegue i verbi di carte.json) | 🟡 E3a fatto (ETB + 5 verbi); E3b = loader JSON + passiva + scelte |
 | E4 | Combattimento (attacco/blocco/danno/morti) | 🟡 core fatto (2p) |
 | E5 | Stack & priorità (Istanti, LIFO) | ⬜ |
 | E6 | Vittoria/obiettivi segreti/respawn 3-vite | ⬜ |

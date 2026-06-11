@@ -23,6 +23,9 @@ namespace Engine.Core
     public sealed record ManaGenerato(int Giocatore, string Iid, IReadOnlyDictionary<string, int> Mana) : Evento;
     public sealed record CreaturaGiocata(int Giocatore, string Iid) : Evento;
 
+    // E3 — effetti.
+    public sealed record CartaMacinata(int Giocatore, string Iid) : Evento;
+
     // E4 — combattimento.
     public sealed record CreaturaAttacca(int Giocatore, string Iid) : Evento;
     public sealed record CreaturaBlocca(int Giocatore, string Bloccante, string Attaccante) : Evento;

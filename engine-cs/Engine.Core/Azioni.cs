@@ -11,7 +11,8 @@ namespace Engine.Core
         ManaCosto? Costo = null,
         ManaProdotto? Produzione = null,
         int? Atk = null,
-        int? Def = null);
+        int? Def = null,
+        IReadOnlyList<Effetto>? Effetti = null);
 
     // Comodità di lettura per i tipi compositi dei TS.
     //   DefinizioniCarte = IReadOnlyDictionary<string, DefCarta>
