@@ -199,10 +199,20 @@ namespace Engine.Core
             var campo = g.Campo.Select(c => setAtt.Contains(c.Iid) ? c with { Tappata = true } : c).ToList();
             var nuovo = g with { Campo = campo };
             var giocatori = stato.Giocatori.Select((gg, i) => i == att ? nuovo : gg).ToArray();
+            var nuovoStato = stato with { Giocatori = giocatori, Combattimento = new Combattimento(attaccanti) };
             var eventi = attaccanti.Select(iid => (Evento)new CreaturaAttacca(att, iid)).ToList();
-            return Risultato.Successo(
-                stato with { Giocatori = giocatori, Combattimento = new Combattimento(attaccanti) },
-                eventi);
+
+            // E3 — gli effetti "attacco" scattano alla dichiarazione, per ogni attaccante.
+            foreach (string iid in attaccanti)
+            {
+                CartaIstanza c = g.Campo.First(x => x.Iid == iid);
+                if (!stato.Carte.TryGetValue(c.DefId, out DefCarta? def)) continue;
+                var r = Effetti.EseguiTrigger(nuovoStato, def, att, iid, Trigger.Attacco);
+                nuovoStato = r.Stato;
+                eventi.AddRange(r.Eventi);
+            }
+
+            return Risultato.Successo(nuovoStato, eventi);
         }
 
         private static Risultato DichiaraBlocchiImpl(StatoPartita stato, IReadOnlyDictionary<string, string> assegnazioni)

@@ -84,9 +84,19 @@ namespace Engine.Data
                 case "mill":
                     // il parser non cattura il target del mill: convenzione = avversario.
                     return new Mill(LeggiBersaglio(a, "giocatore", Proprietario.Avversario), IntOpt(a, "valore"));
+                case "genera_token":
+                    return LeggiToken(a);
                 default:
                     return null;
             }
+        }
+
+        private static AzioneEffetto? LeggiToken(JsonElement a)
+        {
+            if (!a.TryGetProperty("token", out JsonElement t) || t.ValueKind != JsonValueKind.Object) return null;
+            string nome = StrOpt(t, "nome") ?? "Token";
+            string controllore = StrOpt(t, "controllore") ?? "tu";
+            return new GeneraToken(nome, IntOpt(t, "atk"), IntOpt(t, "def"), controllore);
         }
 
         private static ManaProdotto? LeggiProduzione(JsonElement a)

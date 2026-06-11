@@ -25,6 +25,7 @@ namespace Engine.Core
 
     // E3 — effetti.
     public sealed record CartaMacinata(int Giocatore, string Iid) : Evento;
+    public sealed record TokenGenerato(int Giocatore, string Iid, string Nome) : Evento;
 
     // E4 — combattimento.
     public sealed record CreaturaAttacca(int Giocatore, string Iid) : Evento;

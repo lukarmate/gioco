@@ -89,11 +89,18 @@ Cartella `engine-cs/`, stesso stile (record immutabili, funzione pura). **55/55 
 
 **⚠️ GAP NOTO (parser a monte):** `carte.json` **non contiene ATK/DEF** (il parser non li estrae dal markdown) né campo `produzione` top-level. Quindi le creature caricate da `CarteDb` hanno `Atk/Def = null` → non combattono/non si pagano con stat reali finché il parser non viene esteso. I test E2/E4 usano `DefCarta` costruiti a mano con stat. **TODO parser:** estrarre atk/def dai markdown delle creature.
 
-**E3c (prossimo, da fare):**
-- **`passiva`** (effetti statici continui, es. `modifica_stat tutte` / aure): NON one-shot, vanno ricalcolati di continuo → modello a parte (layer di buff sopra le stat base).
-- **Verbi con scelta** (`quantificatore: una` → richiede targeting input, come `scelte` di AttivaAvamposto).
-- **Verbi mancanti:** `modifica_stat`/`applica_stat`/`segnalino_stat` (richiede danno/segnalini persistenti sulle creature), `concedi_keyword`, `genera_token`, `infliggi_danno` a creature (serve modello danno-su-creatura). Aggiungere record AST + executor + mappatura nel loader.
-- **Altri trigger:** `morte` (su CreaturaDistrutta), `upkeep` (in Fasi.Upkeep), `attacco` (su DichiaraAttacco), `attivata` (nuova azione AttivaAbilita).
+### ✅ FATTO 2026-06-11: Engine E3c.1 (trigger upkeep/attacco + genera_token) — TDD
+**89/89 test verdi** (E3c.1 +4). File toccati: `Effetti.cs`, `Fasi.cs`, `Engine.cs`, `Eventi.cs`, `CarteDb.cs`; test `EffettiTriggerTests.cs`.
+- **Trigger `upkeep`:** `Fasi.Upkeep` ora fa scattare gli effetti upkeep dei permanenti in campo del giocatore attivo all'ingresso della fase (snapshot del campo prima del loop).
+- **Trigger `attacco`:** `DichiaraAttaccoImpl` fa scattare gli effetti `attacco` di ogni attaccante alla dichiarazione.
+- **Verbo `genera_token`:** `GeneraToken(Nome, Atk, Def, Controllore)`. Crea una CartaIstanza token nel campo (summoning-sick), registra la sua `DefCarta` (con stat) in `stato.Carte`, iid deterministico (`sorgente#tokN`). Evento `TokenGenerato`. Mappato anche nel loader (`CarteDb`).
+
+**E3c.2 (prossimo, da fare):**
+- **Trigger `morte`** (su CreaturaDistrutta — combat + verbo Distruggi): far scattare gli effetti morte della creatura morente. Attenzione alla **cascata** (una morte→token/distruggi→altre morti): per ora limitare a un livello, documentare.
+- **Trigger `attivata`** (nuova azione `AttivaAbilita(iid)`, tipo AttivaAvamposto ma generica).
+- **`passiva`** (effetti statici continui, es. `modifica_stat tutte` / aure): NON one-shot → modello a parte (layer di buff sopra le stat base, ricalcolato).
+- **Verbi con scelta** (`quantificatore: una` → targeting input, come `scelte` di AttivaAvamposto).
+- **Verbi mancanti:** `modifica_stat`/`applica_stat`/`segnalino_stat` (serve danno/segnalini persistenti sulle creature), `concedi_keyword`, `infliggi_danno` a creature (serve modello danno-su-creatura). Record AST + executor + mappatura loader.
 
 ### 🟡 IN CORSO 2026-06-10: Engine E4 (combattimento) — core fatto, TDD
 **66/66 test verdi** (E1 28 + E2 27 + E4 11).
@@ -158,7 +165,7 @@ Nessun lavoro attivo in esecuzione. Bivio deciso a inizio prossima sessione:
 |---|---|---|
 | E1 | Core loop + eventi | ✅ fatto |
 | E2 | Giocare permanenti + mana (avamposti→mana, creature vanilla, summoning sickness) | ⬜ |
-| E3 | Interprete effetti (esegue i verbi di carte.json) | 🟡 E3a (ETB + 5 verbi) + E3b (loader JSON) fatti; E3c = passiva + scelte + verbi mancanti |
+| E3 | Interprete effetti (esegue i verbi di carte.json) | 🟡 E3a (ETB+5 verbi) · E3b (loader JSON) · E3c.1 (upkeep/attacco/token) fatti; resta E3c.2 (morte/attivata/passiva/scelte/verbi mancanti) |
 | E4 | Combattimento (attacco/blocco/danno/morti) | 🟡 core fatto (2p) |
 | E5 | Stack & priorità (Istanti, LIFO) | ⬜ |
 | E6 | Vittoria/obiettivi segreti/respawn 3-vite | ⬜ |

@@ -30,6 +30,8 @@ namespace Engine.Core
     public sealed record InfliggiDanno(Bersaglio Bersaglio, int Valore) : AzioneEffetto;
     public sealed record Distruggi(Bersaglio Bersaglio) : AzioneEffetto;
     public sealed record Mill(Bersaglio Bersaglio, int Valore) : AzioneEffetto;
+    // Controllore: "tu" = chi controlla la sorgente, "avversario" = primo avversario.
+    public sealed record GeneraToken(string Nome, int Atk, int Def, string Controllore = "tu") : AzioneEffetto;
 
     public sealed record Effetto(Trigger Trigger, IReadOnlyList<AzioneEffetto> Azioni);
 
@@ -62,6 +64,7 @@ namespace Engine.Core
                 case InfliggiDanno d: return EseguiInfliggiDanno(stato, ctrl, d.Bersaglio, d.Valore, ev);
                 case Distruggi ds: return EseguiDistruggi(stato, ctrl, ds.Bersaglio, ev);
                 case Mill m: return EseguiMill(stato, ctrl, m.Bersaglio, m.Valore, ev);
+                case GeneraToken t: return EseguiGeneraToken(stato, ctrl, iid, t, ev);
                 default: return stato;
             }
         }
@@ -185,6 +188,37 @@ namespace Engine.Core
                 };
             }
             return stato;
+        }
+
+        private static StatoPartita EseguiGeneraToken(
+            StatoPartita stato, int ctrl, string sorgenteIid, GeneraToken t, List<Evento> ev)
+        {
+            int dest = t.Controllore == "avversario" ? (ctrl + 1) % stato.Giocatori.Count : ctrl;
+            string tokDefId = "TOKEN_" + t.Nome;
+
+            // Registra la definizione del token (con stat) se non già presente.
+            if (!stato.Carte.ContainsKey(tokDefId))
+            {
+                var carte = new Dictionary<string, DefCarta>(stato.Carte)
+                {
+                    [tokDefId] = new DefCarta(tokDefId, "Creatura", Atk: t.Atk, Def: t.Def),
+                };
+                stato = stato with { Carte = carte };
+            }
+
+            Giocatore g = stato.Giocatori[dest];
+            // iid deterministico (replay-stabile): sorgente + indice nel campo.
+            string iid = $"{sorgenteIid}#tok{g.Campo.Count}";
+            var token = new CartaIstanza
+            {
+                Iid = iid,
+                DefId = tokDefId,
+                Proprietario = dest,
+                EntrataQuestoTurno = true, // summoning sickness come una creatura giocata
+            };
+            var campo = g.Campo.Concat(new[] { token }).ToList();
+            ev.Add(new TokenGenerato(dest, iid, t.Nome));
+            return stato with { Giocatori = Sostituisci(stato, dest, g with { Campo = campo }) };
         }
 
         private static ManaPool AggiungiMana(ManaPool p, string colore, int q)

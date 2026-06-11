@@ -20,6 +20,7 @@ namespace Engine.Core
             switch (fase)
             {
                 case Fase.Untap: return Untap(stato, eventi);
+                case Fase.Upkeep: return Upkeep(stato, eventi);
                 case Fase.Pesca: return Pesca(stato, eventi);
                 default: return new RisultatoFase(stato, eventi);
             }
@@ -53,6 +54,23 @@ namespace Engine.Core
             var nuovo = g with { Campo = campo, Mazzo = mazzo, AvampostoGiocatoQuestoTurno = false };
             var giocatori = SostituisciGiocatore(stato, att, nuovo);
             return new RisultatoFase(stato with { Giocatori = giocatori }, eventi);
+        }
+
+        // E3 — all'ingresso dell'upkeep, scattano gli effetti upkeep dei permanenti
+        // in campo del giocatore attivo (in ordine di campo).
+        private static RisultatoFase Upkeep(StatoPartita stato, List<Evento> eventi)
+        {
+            int att = stato.TurnoDi;
+            // Snapshot iid+defId prima del loop: gli effetti possono modificare il campo.
+            var permanenti = stato.Giocatori[att].Campo.Select(c => (c.Iid, c.DefId)).ToList();
+            foreach (var (iid, defId) in permanenti)
+            {
+                if (!stato.Carte.TryGetValue(defId, out DefCarta? def)) continue;
+                Effetti.Risultato r = Effetti.EseguiTrigger(stato, def, att, iid, Trigger.Upkeep);
+                stato = r.Stato;
+                eventi.AddRange(r.Eventi);
+            }
+            return new RisultatoFase(stato, eventi);
         }
 
         private static RisultatoFase Pesca(StatoPartita stato, List<Evento> eventi)
