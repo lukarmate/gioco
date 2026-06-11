@@ -1,12 +1,15 @@
 using System.Collections.Generic;
 using UnityEngine;
+using TMPro;
 using Engine.Core;
 using GameEngine = Engine.Core.Engine;
 
 // Prima vista 3D: disegna la mano del giocatore 0 come carte sul tavolo,
 // pilotata dallo stato dell'engine. Gira automaticamente al Play (niente da
-// configurare in editor). Versione 0: carte = rettangoli colorati, niente
-// arte/testo ancora. Serve a vedere il ponte engine -> grafica.
+// configurare in editor). Carte = rettangoli colorati con testo (nome, costo,
+// ATK/DEF) via TextMeshPro 3D. Serve a vedere il ponte engine -> grafica.
+// NB: se il testo non appare, importa i font TMP da
+//   Window > TextMeshPro > Import TMP Essential Resources.
 public static class CampoView
 {
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -15,7 +18,7 @@ public static class CampoView
         StatoPartita stato = CostruisciPartita();
         InquadraCamera();
         CreaTavolo();
-        DisegnaMano(stato.Giocatori[0].Mano);
+        DisegnaMano(stato, stato.Giocatori[0].Mano);
 
         var nomi = new List<string>();
         foreach (var c in stato.Giocatori[0].Mano) nomi.Add(c.DefId);
@@ -70,7 +73,9 @@ public static class CampoView
         t.GetComponent<Renderer>().material = MatUrp(new Color(0.10f, 0.13f, 0.18f));
     }
 
-    private static void DisegnaMano(IReadOnlyList<CartaIstanza> mano)
+    private static readonly Vector3 ScalaCarta = new Vector3(0.63f, 0.88f, 0.04f);
+
+    private static void DisegnaMano(StatoPartita stato, IReadOnlyList<CartaIstanza> mano)
     {
         int n = mano.Count;
         float passo = 0.78f;
@@ -86,12 +91,51 @@ public static class CampoView
         {
             var carta = GameObject.CreatePrimitive(PrimitiveType.Cube);
             carta.name = "Carta_" + mano[i].DefId;
-            carta.transform.localScale = new Vector3(0.63f, 0.88f, 0.04f);
+            carta.transform.localScale = ScalaCarta;
             float x = startX + i * passo;
             carta.transform.position = new Vector3(x, 0.55f, 0f);
             // leggera inclinazione + ventaglio (stile Snap)
             carta.transform.rotation = Quaternion.Euler(-14f, 0f, (n / 2f - i) * 4f);
             carta.GetComponent<Renderer>().material = MatUrp(colori[i % colori.Length]);
+
+            stato.Carte.TryGetValue(mano[i].DefId, out DefCarta def);
+            ScriviTesto(carta.transform, mano[i].DefId, def);
         }
+    }
+
+    // Aggiunge nome + costo + ATK/DEF sulla faccia della carta (verso la camera).
+    private static void ScriviTesto(Transform carta, string nome, DefCarta def)
+    {
+        // Costo = totale del ManaCosto (versione 0: numero singolo).
+        if (def?.Costo != null)
+            AggiungiEtichetta(carta, def.Costo.Totale.ToString(), 0.40f, 0.30f, TextAlignmentOptions.Top);
+
+        AggiungiEtichetta(carta, nome, 0.10f, 0.26f, TextAlignmentOptions.Center);
+
+        if (def?.Atk != null || def?.Def != null)
+            AggiungiEtichetta(carta, $"{def.Atk ?? 0}/{def.Def ?? 0}", -0.40f, 0.30f, TextAlignmentOptions.Bottom);
+    }
+
+    // Etichetta TMP 3D figlia della carta. yLocale = posizione verticale sulla
+    // faccia (la carta va da -0.5 a 0.5). Counter-scale per annullare la scala
+    // non uniforme del parent; rot 180Y per affacciarsi alla camera (lato -Z).
+    private static void AggiungiEtichetta(Transform carta, string testo, float yLocale, float dim, TextAlignmentOptions align)
+    {
+        var go = new GameObject("Txt_" + testo);
+        go.transform.SetParent(carta, false);
+        go.transform.localPosition = new Vector3(0f, yLocale, -0.6f);
+        go.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
+        go.transform.localScale = new Vector3(1f / ScalaCarta.x, 1f / ScalaCarta.y, 1f);
+
+        var tmp = go.AddComponent<TextMeshPro>();
+        tmp.text = testo;
+        tmp.fontSize = dim;
+        tmp.fontStyle = FontStyles.Bold;
+        tmp.alignment = align;
+        tmp.enableWordWrapping = false;
+        tmp.color = Color.white;
+        tmp.outlineWidth = 0.2f;
+        tmp.outlineColor = new Color32(0, 0, 0, 255);
+        tmp.rectTransform.sizeDelta = new Vector2(0.95f, 0.5f);
     }
 }
