@@ -9,6 +9,8 @@ namespace Engine.Data
     public static class CarteDb
     {
         // Trasforma il testo JSON di dist-motore/carte.json in Dictionary<defId, DefCarta>.
+        // Popola: Tipo, Costo (parse stringa), Produzione (dal verbo "avamposto"),
+        // Effetti (AST E3 per i verbi supportati). ATK/DEF non sono nel JSON (gap parser).
         public static IReadOnlyDictionary<string, DefCarta> CaricaCarte(string jsonText)
         {
             var m = new Dictionary<string, DefCarta>();
@@ -22,12 +24,140 @@ namespace Engine.Data
                 string? id = idEl.GetString();
                 if (string.IsNullOrEmpty(id)) continue; // come TS: `if (!v.id) continue`
 
-                string tipo = v.TryGetProperty("tipo", out JsonElement tEl) && tEl.ValueKind == JsonValueKind.String
-                    ? (tEl.GetString() ?? "")
-                    : "";
-                m[id!] = new DefCarta(id!, tipo);
+                string tipo = StrOpt(v, "tipo") ?? "";
+
+                ManaCosto? costo = null;
+                string? costoStr = StrOpt(v, "costo");
+                if (!string.IsNullOrWhiteSpace(costoStr)) costo = ManaCosto.Parse(costoStr!);
+
+                ManaProdotto? produzione = null;
+                var effetti = new List<Effetto>();
+                if (v.TryGetProperty("effetti", out JsonElement effEl) && effEl.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (JsonElement e in effEl.EnumerateArray())
+                        LeggiEffetto(e, effetti, ref produzione);
+                }
+
+                m[id!] = new DefCarta(
+                    id!, tipo,
+                    Costo: costo,
+                    Produzione: produzione,
+                    Effetti: effetti.Count > 0 ? effetti : null);
             }
             return m;
         }
+
+        private static void LeggiEffetto(JsonElement e, List<Effetto> effetti, ref ManaProdotto? produzione)
+        {
+            if (!TryTrigger(StrOpt(e, "trigger"), out Trigger trigger)) return;
+            if (!e.TryGetProperty("azioni", out JsonElement azEl) || azEl.ValueKind != JsonValueKind.Array) return;
+
+            var azioni = new List<AzioneEffetto>();
+            foreach (JsonElement a in azEl.EnumerateArray())
+            {
+                string? verbo = StrOpt(a, "verbo");
+                if (verbo == "avamposto")
+                {
+                    produzione = LeggiProduzione(a) ?? produzione;
+                    continue; // la produzione non è un effetto residuo
+                }
+                AzioneEffetto? az = LeggiAzione(verbo, a);
+                if (az != null) azioni.Add(az); // verbi non supportati (E3c) -> scartati
+            }
+
+            if (azioni.Count > 0) effetti.Add(new Effetto(trigger, azioni));
+        }
+
+        // Verbi supportati dall'executor E3a. Gli altri tornano null (scartati).
+        private static AzioneEffetto? LeggiAzione(string? verbo, JsonElement a)
+        {
+            switch (verbo)
+            {
+                case "pesca":
+                    return new Pesca(IntOpt(a, "valore"));
+                case "genera_mana":
+                    return new GeneraMana(IntOpt(a, "valore"), StrOpt(a, "colore") ?? "generico");
+                case "infliggi_danno":
+                    return new InfliggiDanno(LeggiBersaglio(a, "giocatore", Proprietario.Avversario), IntOpt(a, "valore"));
+                case "distruggi":
+                    return new Distruggi(LeggiBersaglio(a, "creatura", Proprietario.Avversario));
+                case "mill":
+                    // il parser non cattura il target del mill: convenzione = avversario.
+                    return new Mill(LeggiBersaglio(a, "giocatore", Proprietario.Avversario), IntOpt(a, "valore"));
+                default:
+                    return null;
+            }
+        }
+
+        private static ManaProdotto? LeggiProduzione(JsonElement a)
+        {
+            if (!a.TryGetProperty("mana", out JsonElement mEl) || mEl.ValueKind != JsonValueKind.Object) return null;
+            int quantita = IntOpt(mEl, "quantita");
+            bool scelta = mEl.TryGetProperty("scelta", out JsonElement sEl) && sEl.ValueKind == JsonValueKind.True;
+            var colori = new List<string>();
+            if (mEl.TryGetProperty("colori", out JsonElement cEl) && cEl.ValueKind == JsonValueKind.Array)
+                foreach (JsonElement c in cEl.EnumerateArray())
+                    if (c.ValueKind == JsonValueKind.String) colori.Add(c.GetString()!);
+            return new ManaProdotto(quantita, colori, scelta);
+        }
+
+        // Legge il target -> Bersaglio. Se assente, usa i default forniti (tipo/proprietario).
+        private static Bersaglio LeggiBersaglio(JsonElement a, string tipoDefault, Proprietario propDefault)
+        {
+            if (!a.TryGetProperty("target", out JsonElement t) || t.ValueKind != JsonValueKind.Object)
+                return new Bersaglio(tipoDefault, propDefault);
+
+            string tipo = StrOpt(t, "tipo") ?? tipoDefault;
+            Proprietario prop = ParseProprietario(StrOpt(t, "proprietario"), propDefault);
+            Quantificatore quant = ParseQuantificatore(StrOpt(t, "quantificatore"));
+            string? filtro = StrOpt(t, "filtro");
+            return new Bersaglio(tipo, prop, quant, filtro);
+        }
+
+        private static bool TryTrigger(string? s, out Trigger trigger)
+        {
+            switch (s)
+            {
+                case "etb": trigger = Trigger.Etb; return true;
+                case "morte": trigger = Trigger.Morte; return true;
+                case "upkeep": trigger = Trigger.Upkeep; return true;
+                case "attacco": trigger = Trigger.Attacco; return true;
+                case "attivata": trigger = Trigger.Attivata; return true;
+                case "passiva": trigger = Trigger.Passiva; return true;
+                default: trigger = Trigger.Etb; return false;
+            }
+        }
+
+        private static Proprietario ParseProprietario(string? s, Proprietario def)
+        {
+            switch (s)
+            {
+                case "TUE": return Proprietario.Tue;
+                case "AVVERSARIO": return Proprietario.Avversario;
+                case "TUTTI": return Proprietario.Tutti;
+                default: return def;
+            }
+        }
+
+        private static Quantificatore ParseQuantificatore(string? s)
+        {
+            switch (s)
+            {
+                case "una": return Quantificatore.Una;
+                case "ogni": return Quantificatore.Ogni;
+                case "tutte": return Quantificatore.Tutte;
+                default: return Quantificatore.Tutte;
+            }
+        }
+
+        private static string? StrOpt(JsonElement el, string nome)
+            => el.TryGetProperty(nome, out JsonElement p) && p.ValueKind == JsonValueKind.String
+                ? p.GetString()
+                : null;
+
+        private static int IntOpt(JsonElement el, string nome)
+            => el.TryGetProperty(nome, out JsonElement p) && p.ValueKind == JsonValueKind.Number
+                ? p.GetInt32()
+                : 0;
     }
 }

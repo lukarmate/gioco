@@ -68,7 +68,9 @@ Cartella `engine-cs/`, stesso stile (record immutabili, funzione pura). **55/55 
 - Materiali: helper `MatUrp` usa shader `Universal Render Pipeline/Lit` con `_BaseColor` (URP non usa `_Color`).
 - **✅ VERIFICATO 2026-06-10:** Play → tavolo scuro + 5 carte colorate a ventaglio nel Game view, log `[View] mano P0 (5): Lich, Angelo, Mago, Golem, Fata`. Ponte engine→grafica 3D confermato. Primo pezzo visibile del gioco.
 
-**Prossimi passi vista:** (1) testo/nome sulle carte (TextMeshPro), (2) mostrare anche il campo e gli HP, (3) consumare lo *stream eventi* per animare (pesca, gioca carta), (4) input per giocare le carte. Poi arte vera.
+**✅ FATTO 2026-06-11: testo sulle carte (TextMeshPro).** Ogni carta ha 3 etichette TMP world-space figlie (nome, costo totale, ATK/DEF), bianco bold + contorno nero, counter-scale per annullare la scala non uniforme della carta, rot 180Y per affacciarsi alla camera. Richiede TMP Essential Resources (importati, committati in `Assets/TextMesh Pro/`). NB: se il testo non rende → `Window > TextMeshPro > Import TMP Essential Resources`.
+
+**Prossimi passi vista:** (1) ✅ testo carte fatto, (2) mostrare anche il campo e gli HP, (3) consumare lo *stream eventi* per animare (pesca, gioca carta), (4) input per giocare le carte. Poi arte vera.
 
 ### ✅ FATTO 2026-06-11: Engine E3a (interprete effetti) — trigger ETB, TDD
 **74/74 test verdi** (E1 28 + E2 27 + E4 11 + E3a 8). File: `Effetti.cs`, test `EffettiEtbTests.cs`.
@@ -78,11 +80,19 @@ Cartella `engine-cs/`, stesso stile (record immutabili, funzione pura). **55/55 
 - **Modello esteso:** `DefCarta.Effetti` (lista opzionale). Nuovo evento `CartaMacinata`.
 - **Formato carte.json effetti** (catalogato): `effetti:[{trigger, azioni:[{verbo, ...}]}]`. Trigger nel data: passiva(141), attivata(4), etb(3), morte(2), upkeep(1), attacco(1). Verbi: avamposto(95, = produzione mana già in E2), modifica_stat_combo(14), modifica_stat(10), concedi_keyword(9), pesca(9), genera_mana(4), mill(4), infliggi_danno(3), + distruggi/genera_token/applica_stat/segnalino_stat (1 ciascuno).
 
-**E3b (prossimo, da fare):**
-- **Loader JSON→AST** in `Engine.Data` (parsa `effetti` di carte.json → `List<Effetto>` su `DefCarta`). È il pezzo che collega le carte vere all'interprete.
+### ✅ FATTO 2026-06-11: Engine E3b (loader JSON→AST) — TDD
+**85/85 test verdi** (E3b +11, incluso smoke sul dataset reale). File: `Engine.Data/CarteDb.cs` esteso, test `CarteDbEffettiTests.cs`.
+- `CarteDb.CaricaCarte` ora popola **Costo** (parse stringa via `ManaCosto.Parse`), **Produzione** (dal verbo `avamposto {mana:{quantita,colori,scelta}}` → `ManaProdotto`), **Effetti** (AST E3 per i verbi supportati).
+- **Mappatura verbi** (solo quelli che l'executor E3a interpreta): `pesca`, `genera_mana`, `infliggi_danno`, `distruggi`, `mill`. Verbi non ancora supportati → **scartati** (E3c). Effetto senza azioni residue → omesso.
+- **Mappatura target→Bersaglio:** proprietario (TUE/AVVERSARIO/TUTTI), quantificatore (una/tutte/ogni), filtro. Convenzione: `mill` senza target → giocatore Avversario.
+- **Smoke reale:** `DatasetReale_caricaSenzaErrori` risale a `dist-motore/carte.json`, carica tutte le 317 carte, verifica costi/produzioni/effetti non vuoti.
+
+**⚠️ GAP NOTO (parser a monte):** `carte.json` **non contiene ATK/DEF** (il parser non li estrae dal markdown) né campo `produzione` top-level. Quindi le creature caricate da `CarteDb` hanno `Atk/Def = null` → non combattono/non si pagano con stat reali finché il parser non viene esteso. I test E2/E4 usano `DefCarta` costruiti a mano con stat. **TODO parser:** estrarre atk/def dai markdown delle creature.
+
+**E3c (prossimo, da fare):**
 - **`passiva`** (effetti statici continui, es. `modifica_stat tutte` / aure): NON one-shot, vanno ricalcolati di continuo → modello a parte (layer di buff sopra le stat base).
 - **Verbi con scelta** (`quantificatore: una` → richiede targeting input, come `scelte` di AttivaAvamposto).
-- **Verbi mancanti:** `modifica_stat`/`applica_stat`/`segnalino_stat` (richiede danno/segnalini persistenti sulle creature), `concedi_keyword`, `genera_token`, `infliggi_danno` a creature (serve modello danno-su-creatura, oggi il combat è confronto istantaneo ATK/DEF).
+- **Verbi mancanti:** `modifica_stat`/`applica_stat`/`segnalino_stat` (richiede danno/segnalini persistenti sulle creature), `concedi_keyword`, `genera_token`, `infliggi_danno` a creature (serve modello danno-su-creatura). Aggiungere record AST + executor + mappatura nel loader.
 - **Altri trigger:** `morte` (su CreaturaDistrutta), `upkeep` (in Fasi.Upkeep), `attacco` (su DichiaraAttacco), `attivata` (nuova azione AttivaAbilita).
 
 ### 🟡 IN CORSO 2026-06-10: Engine E4 (combattimento) — core fatto, TDD
@@ -148,7 +158,7 @@ Nessun lavoro attivo in esecuzione. Bivio deciso a inizio prossima sessione:
 |---|---|---|
 | E1 | Core loop + eventi | ✅ fatto |
 | E2 | Giocare permanenti + mana (avamposti→mana, creature vanilla, summoning sickness) | ⬜ |
-| E3 | Interprete effetti (esegue i verbi di carte.json) | 🟡 E3a fatto (ETB + 5 verbi); E3b = loader JSON + passiva + scelte |
+| E3 | Interprete effetti (esegue i verbi di carte.json) | 🟡 E3a (ETB + 5 verbi) + E3b (loader JSON) fatti; E3c = passiva + scelte + verbi mancanti |
 | E4 | Combattimento (attacco/blocco/danno/morti) | 🟡 core fatto (2p) |
 | E5 | Stack & priorità (Istanti, LIFO) | ⬜ |
 | E6 | Vittoria/obiettivi segreti/respawn 3-vite | ⬜ |
