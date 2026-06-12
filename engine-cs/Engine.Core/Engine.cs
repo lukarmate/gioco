@@ -46,6 +46,8 @@ namespace Engine.Core
                     return AttivaAvampostoImpl(stato, aa.Iid, aa.Scelte);
                 case GiocaCreatura gc:
                     return GiocaCreaturaImpl(stato, gc.Iid);
+                case AttivaAbilita ab:
+                    return AttivaAbilitaImpl(stato, ab.Iid);
                 case DichiaraAttacco da:
                     return DichiaraAttaccoImpl(stato, da.Attaccanti);
                 case DichiaraBlocchi db:
@@ -173,6 +175,28 @@ namespace Engine.Core
             return Risultato.Successo(nuovoStato, eventi);
         }
 
+        private static Risultato AttivaAbilitaImpl(StatoPartita stato, string iid)
+        {
+            int att = stato.TurnoDi;
+            Giocatore g = stato.Giocatori[att];
+            CartaIstanza? carta = g.Campo.FirstOrDefault(c => c.Iid == iid);
+            if (carta is null) return Risultato.Fallito("permanente non in campo");
+            if (carta.Tappata) return Risultato.Fallito("permanente già tappato");
+
+            if (!stato.Carte.TryGetValue(carta.DefId, out DefCarta? def))
+                return Risultato.Fallito("definizione carta mancante");
+            bool haAttivata = def.Effetti?.Any(e => e.Trigger == Trigger.Attivata) ?? false;
+            if (!haAttivata) return Risultato.Fallito("la carta non ha un'abilità attivabile");
+
+            // Tappa il permanente, poi esegue gli effetti attivata.
+            var campo = g.Campo.Select(c => c.Iid == iid ? c with { Tappata = true } : c).ToList();
+            var giocatori = stato.Giocatori.Select((gg, i) => i == att ? gg with { Campo = campo } : gg).ToArray();
+            var nuovoStato = stato with { Giocatori = giocatori };
+
+            var r = Effetti.EseguiTrigger(nuovoStato, def, att, iid, Trigger.Attivata);
+            return Risultato.Successo(r.Stato, r.Eventi);
+        }
+
         private static bool ECreatura(StatoPartita stato, CartaIstanza c)
             => stato.Carte.TryGetValue(c.DefId, out DefCarta? d) && d.Atk != null;
 
@@ -244,8 +268,9 @@ namespace Engine.Core
             var eventi = new List<Evento>();
             int dannoGiocatore = 0;
 
-            int Atk(CartaIstanza c) => stato.Carte[c.DefId].Atk ?? 0;
-            int Def(CartaIstanza c) => stato.Carte[c.DefId].Def ?? 0;
+            // E3c.3 — usa le stat EFFETTIVE (base + modificatori passivi attivi).
+            int Atk(CartaIstanza c) => Effetti.StatEffettive(stato, c).Atk;
+            int Def(CartaIstanza c) => Effetti.StatEffettive(stato, c).Def;
 
             foreach (string aid in attaccanti)
             {
@@ -269,6 +294,7 @@ namespace Engine.Core
             }
 
             // Applica morti (sposta in cimitero) + danno al difensore.
+            var mortiInfo = new List<(string iid, string defId, int prop)>();
             Giocatore Aggiorna(Giocatore g, bool eDifensore)
             {
                 var rimaste = new List<CartaIstanza>();
@@ -279,6 +305,7 @@ namespace Engine.Core
                     {
                         nuoveCimitero.Add(c);
                         eventi.Add(new CreaturaDistrutta(c.Iid, c.Proprietario));
+                        mortiInfo.Add((c.Iid, c.DefId, c.Proprietario));
                     }
                     else rimaste.Add(c);
                 }
@@ -293,9 +320,11 @@ namespace Engine.Core
             if (dannoGiocatore > 0)
                 eventi.Add(new DannoGiocatore(dif, dannoGiocatore));
 
-            return Risultato.Successo(
-                stato with { Giocatori = giocatori, Combattimento = null },
-                eventi);
+            var nuovoStato = stato with { Giocatori = giocatori, Combattimento = null };
+            // E3 — gli effetti morte scattano dopo la risoluzione del combattimento.
+            nuovoStato = Effetti.EseguiMorti(nuovoStato, mortiInfo, eventi);
+
+            return Risultato.Successo(nuovoStato, eventi);
         }
 
         private static ManaPool AggiungiMana(ManaPool p, string colore, int q)

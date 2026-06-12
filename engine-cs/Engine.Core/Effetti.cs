@@ -32,6 +32,9 @@ namespace Engine.Core
     public sealed record Mill(Bersaglio Bersaglio, int Valore) : AzioneEffetto;
     // Controllore: "tu" = chi controlla la sorgente, "avversario" = primo avversario.
     public sealed record GeneraToken(string Nome, int Atk, int Def, string Controllore = "tu") : AzioneEffetto;
+    // Effetti STATICI (trigger Passiva): non mutano lo stato, sono letti da StatEffettive/KeywordEffettive.
+    public sealed record ModificaStat(Bersaglio Bersaglio, int Atk, int Def) : AzioneEffetto;
+    public sealed record ConcediKeyword(Bersaglio Bersaglio, string Keyword) : AzioneEffetto;
 
     public sealed record Effetto(Trigger Trigger, IReadOnlyList<AzioneEffetto> Azioni);
 
@@ -67,6 +70,69 @@ namespace Engine.Core
                 case GeneraToken t: return EseguiGeneraToken(stato, ctrl, iid, t, ev);
                 default: return stato;
             }
+        }
+
+        // --- effetti statici (passiva): stat e keyword effettive ---
+
+        // Stat di una creatura = base (DefCarta) + somma dei modificatori passivi attivi sul campo.
+        public static (int Atk, int Def) StatEffettive(StatoPartita stato, CartaIstanza carta)
+        {
+            if (!stato.Carte.TryGetValue(carta.DefId, out DefCarta? def)) return (0, 0);
+            int atk = def.Atk ?? 0;
+            int def2 = def.Def ?? 0;
+            foreach (var (srcCtrl, az) in PassiveAzioni(stato))
+            {
+                if (az is ModificaStat ms && Bersagliata(carta, srcCtrl, ms.Bersaglio))
+                {
+                    atk += ms.Atk;
+                    def2 += ms.Def;
+                }
+            }
+            return (atk, def2);
+        }
+
+        // Keyword effettive = base (DefCarta.Keyword) + keyword concesse da effetti passivi attivi.
+        public static ISet<string> KeywordEffettive(StatoPartita stato, CartaIstanza carta)
+        {
+            var set = new HashSet<string>();
+            if (stato.Carte.TryGetValue(carta.DefId, out DefCarta? def) && def.Keyword != null)
+                foreach (string k in def.Keyword) set.Add(k);
+
+            foreach (var (srcCtrl, az) in PassiveAzioni(stato))
+                if (az is ConcediKeyword ck && Bersagliata(carta, srcCtrl, ck.Bersaglio))
+                    set.Add(ck.Keyword);
+
+            return set;
+        }
+
+        // Tutte le azioni passive attive sul campo, con il controllore della sorgente.
+        private static IEnumerable<(int ctrl, AzioneEffetto az)> PassiveAzioni(StatoPartita stato)
+        {
+            for (int i = 0; i < stato.Giocatori.Count; i++)
+            {
+                foreach (CartaIstanza c in stato.Giocatori[i].Campo)
+                {
+                    if (!stato.Carte.TryGetValue(c.DefId, out DefCarta? def) || def.Effetti == null) continue;
+                    foreach (Effetto e in def.Effetti)
+                        if (e.Trigger == Trigger.Passiva)
+                            foreach (AzioneEffetto az in e.Azioni)
+                                yield return (i, az);
+                }
+            }
+        }
+
+        // La carta bersaglio è colpita dal Bersaglio di una sorgente controllata da srcCtrl?
+        private static bool Bersagliata(CartaIstanza bersaglio, int srcCtrl, Bersaglio b)
+        {
+            if (b.Quantificatore == Quantificatore.Una) return false; // i passivi non hanno target singolo
+            int owner = bersaglio.Proprietario;
+            bool propOk = b.Proprietario switch
+            {
+                Proprietario.Tue => owner == srcCtrl,
+                Proprietario.Avversario => owner != srcCtrl,
+                _ => true,
+            };
+            return propOk;
         }
 
         // --- targeting ---
@@ -145,6 +211,7 @@ namespace Engine.Core
             // E3a: solo quantificatori deterministici (Tutte/Ogni); Una -> E3b.
             if (bersaglio.Quantificatore == Quantificatore.Una) return stato;
 
+            var morti = new List<(string iid, string defId, int prop)>();
             foreach (int idx in RisolviGiocatori(stato, ctrl, bersaglio.Proprietario).ToList())
             {
                 Giocatore g = stato.Giocatori[idx];
@@ -156,6 +223,7 @@ namespace Engine.Core
                     {
                         cimitero.Add(c);
                         ev.Add(new CreaturaDistrutta(c.Iid, c.Proprietario));
+                        morti.Add((c.Iid, c.DefId, c.Proprietario));
                     }
                     else rimaste.Add(c);
                 }
@@ -163,6 +231,22 @@ namespace Engine.Core
                 {
                     Giocatori = Sostituisci(stato, idx, g with { Campo = rimaste, Cimitero = cimitero }),
                 };
+            }
+            return EseguiMorti(stato, morti, ev);
+        }
+
+        // E3c.2 — fa scattare gli effetti morte delle creature appena morte.
+        // Controllore = proprietario della creatura. Cascata naturale (board finito → termina);
+        // i verbi non-Distruggi non causano nuove morti, quindi non c'è loop infinito.
+        public static StatoPartita EseguiMorti(
+            StatoPartita stato, IEnumerable<(string iid, string defId, int prop)> morti, List<Evento> ev)
+        {
+            foreach (var m in morti)
+            {
+                if (!stato.Carte.TryGetValue(m.defId, out DefCarta? def)) continue;
+                Risultato r = EseguiTrigger(stato, def, m.prop, m.iid, Trigger.Morte);
+                stato = r.Stato;
+                ev.AddRange(r.Eventi);
             }
             return stato;
         }

@@ -95,12 +95,25 @@ Cartella `engine-cs/`, stesso stile (record immutabili, funzione pura). **55/55 
 - **Trigger `attacco`:** `DichiaraAttaccoImpl` fa scattare gli effetti `attacco` di ogni attaccante alla dichiarazione.
 - **Verbo `genera_token`:** `GeneraToken(Nome, Atk, Def, Controllore)`. Crea una CartaIstanza token nel campo (summoning-sick), registra la sua `DefCarta` (con stat) in `stato.Carte`, iid deterministico (`sorgente#tokN`). Evento `TokenGenerato`. Mappato anche nel loader (`CarteDb`).
 
-**E3c.2 (prossimo, da fare):**
-- **Trigger `morte`** (su CreaturaDistrutta — combat + verbo Distruggi): far scattare gli effetti morte della creatura morente. Attenzione alla **cascata** (una morte→token/distruggi→altre morti): per ora limitare a un livello, documentare.
-- **Trigger `attivata`** (nuova azione `AttivaAbilita(iid)`, tipo AttivaAvamposto ma generica).
-- **`passiva`** (effetti statici continui, es. `modifica_stat tutte` / aure): NON one-shot → modello a parte (layer di buff sopra le stat base, ricalcolato).
-- **Verbi con scelta** (`quantificatore: una` → targeting input, come `scelte` di AttivaAvamposto).
-- **Verbi mancanti:** `modifica_stat`/`applica_stat`/`segnalino_stat` (serve danno/segnalini persistenti sulle creature), `concedi_keyword`, `infliggi_danno` a creature (serve modello danno-su-creatura). Record AST + executor + mappatura loader.
+### ✅ FATTO 2026-06-11: Engine E3c.2 (trigger morte + attivata) — TDD
+**96/96 test verdi** (E3c.2 +8). File: `Effetti.cs`, `Engine.cs`, `Azioni.cs`; test `EffettiMorteTests.cs`, `AttivaAbilitaTests.cs`.
+- **Trigger `morte`:** `Effetti.EseguiMorti(stato, morti, ev)` fa scattare gli effetti morte (controllore = proprietario del morto). Agganciato sia al **combat** (`DichiaraBlocchiImpl`, dopo la risoluzione) sia al **verbo `Distruggi`**. Cascata naturale (board finito → termina; i verbi non-Distruggi non creano morti → niente loop infinito).
+- **Trigger `attivata`:** nuova azione `AttivaAbilita(iid)`. Valida (permanente proprio in campo, non tappato, ha effetti `attivata`), tappa il permanente (1 uso/turno), esegue gli effetti. (Costo mana di attivazione: non modellato in v1; aggiungibile.)
+
+### ✅ FATTO 2026-06-13: Engine E3c.3 (effetti passivi / layer stat) — TDD
+**102/102 test verdi** (E3c.3 +6). File: `Effetti.cs`, `Engine.cs`, `Azioni.cs`; test `EffettiPassivaTests.cs`.
+- **Architettura statici:** gli effetti `passiva` NON mutano lo stato. Nuove funzioni **`Effetti.StatEffettive(stato, carta)`** e **`Effetti.KeywordEffettive(stato, carta)`** = base (DefCarta) + somma dei modificatori passivi attivi su tutto il campo (scan dei permanenti, targeting relativo al controllore della sorgente).
+- **Verbi statici:** `ModificaStat(Bersaglio, Atk, Def)` (copre `modifica_stat` e `modifica_stat_combo`), `ConcediKeyword(Bersaglio, Keyword)`. Aggiunto campo `DefCarta.Keyword`.
+- **Combat ora legge le stat EFFETTIVE** (`DichiaraBlocchiImpl` usa `StatEffettive`, non più `def.Atk/Def` grezze) → buff/debuff passivi influenzano il combattimento.
+- **Nota:** debuff che porta DEF≤0 non causa morte automatica (mancano le state-based actions; a parte). `Filtro` del bersaglio ancora ignorato. Loader (`CarteDb`) NON mappa ancora `modifica_stat`/`concedi_keyword` → da aggiungere (E3c.4) ora che l'AST esiste.
+
+**E3 — cosa resta (E3c.4, opzionale/incrementale):**
+- **Mappare nel loader** `modifica_stat`/`modifica_stat_combo`/`concedi_keyword` → AST (ora supportato).
+- **Verbi con scelta** (`quantificatore: una` → targeting input).
+- **Danno/segnalini persistenti sulle creature** (per `infliggi_danno` a creatura, `segnalino_stat`, `applica_stat`) → richiede un modello di danno/contatori su `CartaIstanza`.
+- **State-based actions** (creatura con DEF≤0 muore subito, anche da debuff).
+
+> ⚠️ **Gotcha ambiente test:** questa macchina è lenta a buildare (~60s a freddo) e `vstest` va in timeout se ci sono `dotnet test` concorrenti. Lanciare **UN SOLO** `dotnet test` per volta; se serve, `VSTEST_CONNECTION_TIMEOUT=300`. Non parallelizzare le build.
 
 ### 🟡 IN CORSO 2026-06-10: Engine E4 (combattimento) — core fatto, TDD
 **66/66 test verdi** (E1 28 + E2 27 + E4 11).
@@ -165,7 +178,7 @@ Nessun lavoro attivo in esecuzione. Bivio deciso a inizio prossima sessione:
 |---|---|---|
 | E1 | Core loop + eventi | ✅ fatto |
 | E2 | Giocare permanenti + mana (avamposti→mana, creature vanilla, summoning sickness) | ⬜ |
-| E3 | Interprete effetti (esegue i verbi di carte.json) | 🟡 E3a (ETB+5 verbi) · E3b (loader JSON) · E3c.1 (upkeep/attacco/token) fatti; resta E3c.2 (morte/attivata/passiva/scelte/verbi mancanti) |
+| E3 | Interprete effetti (esegue i verbi di carte.json) | ✅ core fatto: E3a · E3b (loader) · E3c.1 (upkeep/attacco/token) · E3c.2 (morte/attivata) · E3c.3 (passiva/layer stat). Resta E3c.4 incrementale (map buff nel loader, verbi con scelta, danno/segnalini su creatura, state-based) |
 | E4 | Combattimento (attacco/blocco/danno/morti) | 🟡 core fatto (2p) |
 | E5 | Stack & priorità (Istanti, LIFO) | ⬜ |
 | E6 | Vittoria/obiettivi segreti/respawn 3-vite | ⬜ |

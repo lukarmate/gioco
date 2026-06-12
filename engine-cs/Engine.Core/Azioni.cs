@@ -12,7 +12,8 @@ namespace Engine.Core
         ManaProdotto? Produzione = null,
         int? Atk = null,
         int? Def = null,
-        IReadOnlyList<Effetto>? Effetti = null);
+        IReadOnlyList<Effetto>? Effetti = null,
+        IReadOnlyList<string>? Keyword = null);
 
     // Comodità di lettura per i tipi compositi dei TS.
     //   DefinizioniCarte = IReadOnlyDictionary<string, DefCarta>
@@ -39,6 +40,10 @@ namespace Engine.Core
     public sealed record AttivaAvamposto(string Iid, IReadOnlyList<string>? Scelte = null) : Azione;
 
     public sealed record GiocaCreatura(string Iid) : Azione;
+
+    // E3 — attiva l'abilità (trigger "attivata") di un permanente proprio in campo.
+    // Tappa il permanente ed esegue i suoi effetti attivata. 1 uso/turno (finché stappato).
+    public sealed record AttivaAbilita(string Iid) : Azione;
 
     // E4 — combattimento.
     public sealed record DichiaraAttacco(IReadOnlyList<string> Attaccanti) : Azione;
