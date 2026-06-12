@@ -45,10 +45,8 @@ namespace Engine.Core
     // Tappa il permanente ed esegue i suoi effetti attivata. 1 uso/turno (finché stappato).
     public sealed record AttivaAbilita(string Iid) : Azione;
 
-    // E4 — combattimento.
-    public sealed record DichiaraAttacco(IReadOnlyList<string> Attaccanti) : Azione;
-
-    // Blocchi: mappa attaccante -> bloccante. Attaccanti non presenti = non bloccati.
-    // Dichiarare i blocchi risolve il combattimento.
-    public sealed record DichiaraBlocchi(IReadOnlyDictionary<string, string> Assegnazioni) : Azione;
+    // E4 — combattimento (attacco diretto stile Hearthstone).
+    // Bersaglio = iid di una creatura avversaria, oppure null = HP del giocatore avversario.
+    // Risoluzione immediata: danno reciproco (vs creatura) o agli HP (vs giocatore).
+    public sealed record Attacca(string Attaccante, string? Bersaglio = null) : Azione;
 }

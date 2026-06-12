@@ -27,9 +27,9 @@ namespace Engine.Core
     public sealed record CartaMacinata(int Giocatore, string Iid) : Evento;
     public sealed record TokenGenerato(int Giocatore, string Iid, string Nome) : Evento;
 
-    // E4 — combattimento.
+    // E4 — combattimento (attacco diretto stile Hearthstone).
     public sealed record CreaturaAttacca(int Giocatore, string Iid) : Evento;
-    public sealed record CreaturaBlocca(int Giocatore, string Bloccante, string Attaccante) : Evento;
+    public sealed record DannoCreatura(string Iid, int Danno) : Evento;
     public sealed record CreaturaDistrutta(string Iid, int Proprietario) : Evento;
     public sealed record DannoGiocatore(int Giocatore, int Danno) : Evento;
 }

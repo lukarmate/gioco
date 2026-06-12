@@ -30,10 +30,17 @@ namespace Engine.Tests
         }
 
         // Mette una CartaIstanza in campo (es. avamposto già giocato).
-        public static (StatoPartita stato, string iid) MettiInCampo(StatoPartita s, int giocatore, string defId, bool tappata = false)
+        // sick = summoning sickness (EntrataQuestoTurno). iidSuffix per metterne più di una stesso defId.
+        public static (StatoPartita stato, string iid) MettiInCampo(
+            StatoPartita s, int giocatore, string defId,
+            bool tappata = false, bool sick = false, string iidSuffix = "")
         {
-            string iid = "campo-" + defId;
-            var carta = new CartaIstanza { Iid = iid, DefId = defId, Proprietario = giocatore, Tappata = tappata };
+            string iid = "campo-" + defId + iidSuffix;
+            var carta = new CartaIstanza
+            {
+                Iid = iid, DefId = defId, Proprietario = giocatore,
+                Tappata = tappata, EntrataQuestoTurno = sick,
+            };
             var ns = H.ConGiocatore(s, giocatore, g => g with { Campo = g.Campo.Concat(new[] { carta }).ToList() });
             return (ns, iid);
         }

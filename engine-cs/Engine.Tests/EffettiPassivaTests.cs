@@ -106,12 +106,10 @@ namespace Engine.Tests
             (s, att) = E2.MettiInCampo(s, 0, "SOLDATO");
             (s, blk) = E2.MettiInCampo(s, 1, "MURO");
             s = GameEngine.Applica(s, new AvanzaFase()).Stato!; // Combat
-            s = GameEngine.Applica(s, new DichiaraAttacco(new[] { att })).Stato!;
 
-            var r = GameEngine.Applica(s, new DichiaraBlocchi(
-                new Dictionary<string, string> { [att] = blk }));
+            var r = GameEngine.Applica(s, new Attacca(att, blk));
 
-            // SOLDATO effettivo 3 ATK vs MURO 2 DEF -> il muro muore (senza vessillo sarebbe 2 vs 2 = entrambi).
+            // SOLDATO effettivo 3 ATK vs MURO 2 DEF -> il muro muore; MURO ha 0 ATK -> SOLDATO sopravvive.
             Assert.True(r.Ok, r.Errore);
             Assert.Contains(r.Eventi, e => e is CreaturaDistrutta d && d.Iid == blk);
             Assert.DoesNotContain(r.Eventi, e => e is CreaturaDistrutta d && d.Iid == att);

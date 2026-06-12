@@ -51,8 +51,8 @@ namespace Engine.Tests
         {
             var carte = new Dictionary<string, DefCarta>
             {
-                ["GUERRIERO"] = Creatura("GUERRIERO", 3, 2),                 // attaccante
-                ["MARTIRE"] = Creatura("MARTIRE", 2, 2,                      // bloccante che muore
+                ["GUERRIERO"] = Creatura("GUERRIERO", 3, 3),                 // attaccante (sopravvive)
+                ["MARTIRE"] = Creatura("MARTIRE", 2, 2,                      // bersaglio che muore
                     new Effetto(Trigger.Morte, new AzioneEffetto[] { new Pesca(1) })),
             };
             var s = E2.Avvia(carte);
@@ -64,13 +64,11 @@ namespace Engine.Tests
             Assert.Equal(Fase.Combat, s.Fase);
             int mazzo1Prima = s.Giocatori[1].Mazzo.Count;
 
-            s = GameEngine.Applica(s, new DichiaraAttacco(new[] { att })).Stato!;
-            var r = GameEngine.Applica(s, new DichiaraBlocchi(
-                new Dictionary<string, string> { [att] = blk }));
+            var r = GameEngine.Applica(s, new Attacca(att, blk));
 
             Assert.True(r.Ok, r.Errore);
-            // ATK3 vs DEF2 -> il bloccante muore -> morte: Pesca 1 per il giocatore 1.
-            Assert.Contains(r.Eventi, e => e is CreaturaDistrutta);
+            // GUERRIERO 3 ATK vs MARTIRE 2 DEF -> MARTIRE muore -> morte: Pesca 1 per il giocatore 1.
+            Assert.Contains(r.Eventi, e => e is CreaturaDistrutta d && d.Iid == blk);
             Assert.Equal(mazzo1Prima - 1, r.Stato!.Giocatori[1].Mazzo.Count);
             Assert.Single(r.Eventi.OfType<CartaPescata>(), p => p.Giocatore == 1);
         }

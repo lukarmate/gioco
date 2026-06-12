@@ -48,10 +48,8 @@ namespace Engine.Core
                     return GiocaCreaturaImpl(stato, gc.Iid);
                 case AttivaAbilita ab:
                     return AttivaAbilitaImpl(stato, ab.Iid);
-                case DichiaraAttacco da:
-                    return DichiaraAttaccoImpl(stato, da.Attaccanti);
-                case DichiaraBlocchi db:
-                    return DichiaraBlocchiImpl(stato, db.Assegnazioni);
+                case Attacca atk:
+                    return AttaccaImpl(stato, atk.Attaccante, atk.Bersaglio);
                 default:
                     return Risultato.Fallito("azione sconosciuta");
             }
@@ -200,131 +198,143 @@ namespace Engine.Core
         private static bool ECreatura(StatoPartita stato, CartaIstanza c)
             => stato.Carte.TryGetValue(c.DefId, out DefCarta? d) && d.Atk != null;
 
-        private static Risultato DichiaraAttaccoImpl(StatoPartita stato, IReadOnlyList<string> attaccanti)
+        private const string KwProvocazione = "provocazione";
+        private const string KwVelocita = "velocita";
+        private const string KwTravolta = "travolta";
+
+        // Attacco diretto stile Hearthstone. Bersaglio = creatura avversaria (iid) o null = HP avversario.
+        private static Risultato AttaccaImpl(StatoPartita stato, string attaccanteIid, string? bersaglioIid)
         {
             if (stato.Fase != Fase.Combat)
                 return Risultato.Fallito("si attacca solo nella fase di Combattimento");
-            if (attaccanti.Count == 0)
-                return Risultato.Fallito("nessun attaccante dichiarato");
 
             int att = stato.TurnoDi;
-            Giocatore g = stato.Giocatori[att];
-
-            foreach (string iid in attaccanti)
-            {
-                CartaIstanza? c = g.Campo.FirstOrDefault(x => x.Iid == iid);
-                if (c is null) return Risultato.Fallito($"attaccante non in campo: {iid}");
-                if (!ECreatura(stato, c)) return Risultato.Fallito($"non è una creatura: {iid}");
-                if (c.Tappata) return Risultato.Fallito($"creatura tappata non può attaccare: {iid}");
-                if (c.EntrataQuestoTurno) return Risultato.Fallito($"summoning sickness: {iid}");
-            }
-
-            var setAtt = new HashSet<string>(attaccanti);
-            var campo = g.Campo.Select(c => setAtt.Contains(c.Iid) ? c with { Tappata = true } : c).ToList();
-            var nuovo = g with { Campo = campo };
-            var giocatori = stato.Giocatori.Select((gg, i) => i == att ? nuovo : gg).ToArray();
-            var nuovoStato = stato with { Giocatori = giocatori, Combattimento = new Combattimento(attaccanti) };
-            var eventi = attaccanti.Select(iid => (Evento)new CreaturaAttacca(att, iid)).ToList();
-
-            // E3 — gli effetti "attacco" scattano alla dichiarazione, per ogni attaccante.
-            foreach (string iid in attaccanti)
-            {
-                CartaIstanza c = g.Campo.First(x => x.Iid == iid);
-                if (!stato.Carte.TryGetValue(c.DefId, out DefCarta? def)) continue;
-                var r = Effetti.EseguiTrigger(nuovoStato, def, att, iid, Trigger.Attacco);
-                nuovoStato = r.Stato;
-                eventi.AddRange(r.Eventi);
-            }
-
-            return Risultato.Successo(nuovoStato, eventi);
-        }
-
-        private static Risultato DichiaraBlocchiImpl(StatoPartita stato, IReadOnlyDictionary<string, string> assegnazioni)
-        {
-            if (stato.Combattimento is null)
-                return Risultato.Fallito("nessun combattimento in corso");
-
-            int att = stato.TurnoDi;
-            int dif = (att + 1) % stato.Giocatori.Count; // 2p: il difensore è l'altro
+            int dif = (att + 1) % stato.Giocatori.Count; // 2p
             Giocatore gAtt = stato.Giocatori[att];
             Giocatore gDif = stato.Giocatori[dif];
-            var attaccanti = stato.Combattimento.Attaccanti;
 
-            // Validazione blocchi.
-            var bloccantiUsati = new HashSet<string>();
-            foreach (var kv in assegnazioni)
+            CartaIstanza? a = gAtt.Campo.FirstOrDefault(c => c.Iid == attaccanteIid);
+            if (a is null) return Risultato.Fallito("attaccante non in campo");
+            if (!ECreatura(stato, a)) return Risultato.Fallito("l'attaccante non è una creatura");
+            if (a.Tappata) return Risultato.Fallito("creatura tappata non può attaccare");
+            ISet<string> kwAtt = Effetti.KeywordEffettive(stato, a);
+            if (a.EntrataQuestoTurno && !kwAtt.Contains(KwVelocita))
+                return Risultato.Fallito("summoning sickness");
+
+            // Provocazione: se il difensore controlla creature con Provocazione, il bersaglio è obbligato.
+            var taunt = gDif.Campo
+                .Where(c => ECreatura(stato, c) && Effetti.KeywordEffettive(stato, c).Contains(KwProvocazione))
+                .Select(c => c.Iid).ToHashSet();
+            if (taunt.Count > 0 && (bersaglioIid is null || !taunt.Contains(bersaglioIid)))
+                return Risultato.Fallito("devi attaccare una creatura con Provocazione");
+
+            CartaIstanza? bersaglio = bersaglioIid is null
+                ? null
+                : gDif.Campo.FirstOrDefault(c => c.Iid == bersaglioIid);
+            if (bersaglioIid is not null && bersaglio is null)
+                return Risultato.Fallito("bersaglio non in campo");
+            if (bersaglio is not null && !ECreatura(stato, bersaglio))
+                return Risultato.Fallito("il bersaglio non è una creatura");
+
+            var eventi = new List<Evento> { new CreaturaAttacca(att, attaccanteIid) };
+
+            // Tappa l'attaccante, poi fa scattare il trigger "attacco".
+            stato = ConCampo(stato, att, campo =>
+                campo.Select(c => c.Iid == attaccanteIid ? c with { Tappata = true } : c).ToList());
+            if (stato.Carte.TryGetValue(a.DefId, out DefCarta? defA))
             {
-                if (!attaccanti.Contains(kv.Key))
-                    return Risultato.Fallito($"{kv.Key} non è tra gli attaccanti");
-                CartaIstanza? b = gDif.Campo.FirstOrDefault(c => c.Iid == kv.Value);
-                if (b is null) return Risultato.Fallito($"bloccante non in campo: {kv.Value}");
-                if (!ECreatura(stato, b)) return Risultato.Fallito($"il bloccante non è una creatura: {kv.Value}");
-                if (b.Tappata) return Risultato.Fallito($"bloccante tappato: {kv.Value}");
-                if (!bloccantiUsati.Add(kv.Value))
-                    return Risultato.Fallito($"un bloccante non può bloccare due attaccanti: {kv.Value}");
+                var rt = Effetti.EseguiTrigger(stato, defA, att, attaccanteIid, Trigger.Attacco);
+                stato = rt.Stato;
+                eventi.AddRange(rt.Eventi);
             }
 
-            var morti = new HashSet<string>();
-            var eventi = new List<Evento>();
-            int dannoGiocatore = 0;
+            int atkAtt = Effetti.StatEffettive(stato, a).Atk;
 
-            // E3c.3 — usa le stat EFFETTIVE (base + modificatori passivi attivi).
-            int Atk(CartaIstanza c) => Effetti.StatEffettive(stato, c).Atk;
-            int Def(CartaIstanza c) => Effetti.StatEffettive(stato, c).Def;
-
-            foreach (string aid in attaccanti)
+            if (bersaglio is null)
             {
-                CartaIstanza? a = gAtt.Campo.FirstOrDefault(c => c.Iid == aid);
-                if (a is null) continue; // già rimosso (non dovrebbe)
+                // Attacco agli HP del giocatore avversario.
+                stato = InfliggiAGiocatore(stato, dif, atkAtt, att, eventi);
+            }
+            else
+            {
+                // Danno reciproco: l'attaccante e il bersaglio si infliggono il proprio ATK.
+                int atkBer = Effetti.StatEffettive(stato, bersaglio).Atk;
+                int saluteBer = Effetti.StatEffettive(stato, bersaglio).Def - bersaglio.Danno;
 
-                if (assegnazioni.TryGetValue(aid, out string? bid))
+                stato = AggiungiDanno(stato, att, attaccanteIid, atkBer, eventi);
+                stato = AggiungiDanno(stato, dif, bersaglioIid!, atkAtt, eventi);
+
+                // Travolta: l'eccesso oltre la salute del bersaglio passa agli HP del giocatore.
+                if (kwAtt.Contains(KwTravolta) && atkAtt > saluteBer)
                 {
-                    CartaIstanza b = gDif.Campo.First(c => c.Iid == bid);
-                    eventi.Add(new CreaturaBlocca(dif, bid, aid));
-                    int atk = Atk(a), bdef = Def(b);
-                    // Regola 7.3: confronto ATK attaccante vs DEF bloccante.
-                    if (atk > bdef) morti.Add(bid);
-                    else if (atk == bdef) { morti.Add(bid); morti.Add(aid); }
-                    else morti.Add(aid);
-                }
-                else
-                {
-                    dannoGiocatore += Atk(a); // attaccante non bloccato
+                    int eccesso = atkAtt - System.Math.Max(0, saluteBer);
+                    stato = InfliggiAGiocatore(stato, dif, eccesso, att, eventi);
                 }
             }
 
-            // Applica morti (sposta in cimitero) + danno al difensore.
+            // Morti state-based (Danno >= DEF effettiva) + trigger morte.
+            stato = MortiStateBased(stato, eventi);
+            return Risultato.Successo(stato, eventi);
+        }
+
+        private static StatoPartita ConCampo(
+            StatoPartita stato, int idx, System.Func<IReadOnlyList<CartaIstanza>, List<CartaIstanza>> f)
+        {
+            var giocatori = stato.Giocatori
+                .Select((g, i) => i == idx ? g with { Campo = f(g.Campo) } : g).ToArray();
+            return stato with { Giocatori = giocatori };
+        }
+
+        private static StatoPartita AggiungiDanno(
+            StatoPartita stato, int giocatore, string iid, int danno, List<Evento> ev)
+        {
+            if (danno <= 0) return stato;
+            stato = ConCampo(stato, giocatore, campo =>
+                campo.Select(c => c.Iid == iid ? c with { Danno = c.Danno + danno } : c).ToList());
+            ev.Add(new DannoCreatura(iid, danno));
+            return stato;
+        }
+
+        private static StatoPartita InfliggiAGiocatore(
+            StatoPartita stato, int giocatore, int danno, int attaccante, List<Evento> ev)
+        {
+            if (danno <= 0) return stato;
+            Giocatore g = stato.Giocatori[giocatore];
+            int hp = g.Hp - danno;
+            var giocatori = stato.Giocatori.Select((gg, i) => i == giocatore ? gg with { Hp = hp } : gg).ToArray();
+            stato = stato with { Giocatori = giocatori };
+            ev.Add(new DannoGiocatore(giocatore, danno));
+            if (hp <= 0 && !stato.Finita)
+            {
+                int? vinc = stato.Giocatori.Count == 2 ? attaccante : (int?)null;
+                stato = stato with { Finita = true, Vincitore = vinc };
+                ev.Add(new PartitaFinita(vinc, "hp-azzerati"));
+            }
+            return stato;
+        }
+
+        // State-based actions: ogni creatura con Danno >= DEF effettiva muore. Poi scattano i trigger morte.
+        private static StatoPartita MortiStateBased(StatoPartita stato, List<Evento> ev)
+        {
             var mortiInfo = new List<(string iid, string defId, int prop)>();
-            Giocatore Aggiorna(Giocatore g, bool eDifensore)
+            var giocatori = stato.Giocatori.Select(g =>
             {
                 var rimaste = new List<CartaIstanza>();
-                var nuoveCimitero = new List<CartaIstanza>(g.Cimitero);
+                var cimitero = new List<CartaIstanza>(g.Cimitero);
                 foreach (var c in g.Campo)
                 {
-                    if (morti.Contains(c.Iid))
+                    if (ECreatura(stato, c) && c.Danno >= Effetti.StatEffettive(stato, c).Def)
                     {
-                        nuoveCimitero.Add(c);
-                        eventi.Add(new CreaturaDistrutta(c.Iid, c.Proprietario));
+                        cimitero.Add(c with { Danno = 0 });
+                        ev.Add(new CreaturaDistrutta(c.Iid, c.Proprietario));
                         mortiInfo.Add((c.Iid, c.DefId, c.Proprietario));
                     }
                     else rimaste.Add(c);
                 }
-                int hp = eDifensore ? g.Hp - dannoGiocatore : g.Hp;
-                return g with { Campo = rimaste, Cimitero = nuoveCimitero, Hp = hp };
-            }
-
-            var giocatori = stato.Giocatori
-                .Select((g, i) => Aggiorna(g, i == dif))
-                .ToArray();
-
-            if (dannoGiocatore > 0)
-                eventi.Add(new DannoGiocatore(dif, dannoGiocatore));
-
-            var nuovoStato = stato with { Giocatori = giocatori, Combattimento = null };
-            // E3 — gli effetti morte scattano dopo la risoluzione del combattimento.
-            nuovoStato = Effetti.EseguiMorti(nuovoStato, mortiInfo, eventi);
-
-            return Risultato.Successo(nuovoStato, eventi);
+                return g with { Campo = rimaste, Cimitero = cimitero };
+            }).ToArray();
+            stato = stato with { Giocatori = giocatori };
+            return Effetti.EseguiMorti(stato, mortiInfo, ev);
         }
 
         private static ManaPool AggiungiMana(ManaPool p, string colore, int q)

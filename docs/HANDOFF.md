@@ -115,7 +115,20 @@ Cartella `engine-cs/`, stesso stile (record immutabili, funzione pura). **55/55 
 
 > ⚠️ **Gotcha ambiente test:** questa macchina è lenta a buildare (~60s a freddo) e `vstest` va in timeout se ci sono `dotnet test` concorrenti. Lanciare **UN SOLO** `dotnet test` per volta; se serve, `VSTEST_CONNECTION_TIMEOUT=300`. Non parallelizzare le build.
 
-### 🟡 IN CORSO 2026-06-10: Engine E4 (combattimento) — core fatto, TDD
+### ✅ FATTO 2026-06-13: PIVOT v1 + E4 re-baseline (combat diretto Hearthstone) — TDD
+**100/100 test verdi.** Post-review Fable 5 (`FEEDBACK_DESIGN_V1_E_OBIETTIVI.md`), decisioni v1 chiuse in `DESIGN_V1.md` §12. Il combat MTG attacco/blocco è stato **sostituito**.
+- **Nuovo combat (`AttaccaImpl`):** azione `Attacca(attaccante, bersaglio?)`. Bersaglio = creatura avversaria o null = HP avversario. Risoluzione **immediata**: danno reciproco creatura-vs-creatura (ATK contro ATK), o agli HP. Rimossi `DichiaraAttacco`/`DichiaraBlocchi`/`Combattimento`/`CreaturaBlocca`.
+- **Danno persistente (HS-style):** nuovo campo `CartaIstanza.Danno`, **non si resetta** (resta finché curato). Morte **state-based** (`MortiStateBased`): creatura muore quando `Danno >= DEF effettiva`; poi scattano i trigger morte. Nuovo evento `DannoCreatura`.
+- **Keyword combat** (via `KeywordEffettive`): `provocazione` (Taunt — vincolo di targeting: devi colpire prima le creature con Provocazione), `velocita` (ignora summoning sickness), `travolta` (eccesso oltre la salute del bersaglio ucciso → HP del giocatore).
+- Test: `AttaccaTests.cs` (9). Aggiornati i test che usavano il vecchio combat (Effetti morte/passiva/trigger). Helper `E2.MettiInCampo` esteso (sick/iidSuffix).
+
+**Re-baseline v1 — prossimi slice (vedi `DESIGN_V1.md` §11 + `FEEDBACK...` §6):**
+- **Fase unica** (collassa Untap..End in inizio/azioni/fine; attacco nella fase azioni).
+- **Energia automatica** (+1/turno, cap 8, reset; costo = `ManaCosto.Totale`) al posto del mana colorato/Avamposti.
+- **Fatigue** (danno crescente a mazzo vuoto). **Cap board 6** + board-pieno.
+- **Sistema Obiettivi** (pool, assegnazione, tracking, telegrafo 3-stati, win-check parallelo). **Leader**.
+
+### 🟡 STORICO: Engine E4 (combattimento) — vecchio modello attacco/blocco (SOSTITUITO il 2026-06-13)
 **66/66 test verdi** (E1 28 + E2 27 + E4 11).
 - ✅ `DichiaraAttacco(attaccanti)` — solo in fase Combat; valida (creatura propria in campo, non tappata, niente summoning sickness), tappa gli attaccanti, registra `StatoPartita.Combattimento`. Evento `CreaturaAttacca`. Test: `DichiaraAttaccoTests.cs` (5).
 - ✅ `DichiaraBlocchi(assegnazioni)` — mappa attaccante→bloccante; risolve il combattimento (regola 7.3: ATK attaccante vs DEF bloccante → `>` muore bloccante, `=` entrambi, `<` muore attaccante; non bloccato → danno agli HP del difensore). Morti → cimitero. Eventi `CreaturaBlocca`/`CreaturaDistrutta`/`DannoGiocatore`. Chiude `Combattimento`. Test: `CombattimentoTests.cs` (6).

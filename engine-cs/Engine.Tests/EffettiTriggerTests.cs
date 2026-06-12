@@ -52,7 +52,7 @@ namespace Engine.Tests
             Assert.Equal(Fase.Combat, s.Fase);
             int mazzoPrima = s.Giocatori[0].Mazzo.Count;
 
-            var r = GameEngine.Applica(s, new DichiaraAttacco(new[] { iid }));
+            var r = GameEngine.Applica(s, new Attacca(iid)); // bersaglio null = HP avversario
 
             Assert.True(r.Ok, r.Errore);
             Assert.Equal(mazzoPrima - 1, r.Stato!.Giocatori[0].Mazzo.Count);

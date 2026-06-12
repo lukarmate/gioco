@@ -37,6 +37,9 @@ namespace Engine.Core
         // Summoning sickness: true nel turno in cui la creatura entra in campo.
         // Azzerato nell'untap del proprietario.
         public bool EntrataQuestoTurno { get; init; }
+        // Danno accumulato (HS-style): PERSISTE finché non curato (nessun reset a fine turno).
+        // La creatura muore quando Danno >= DEF effettiva.
+        public int Danno { get; init; }
     }
 
     public sealed record Giocatore
@@ -54,10 +57,6 @@ namespace Engine.Core
         public bool AvampostoGiocatoQuestoTurno { get; init; }
     }
 
-    // Stato del combattimento dichiarato: lista degli iid attaccanti (in 2p bersagliano
-    // l'avversario). I blocchi arrivano con l'azione successiva, che risolve il combattimento.
-    public sealed record Combattimento(IReadOnlyList<string> Attaccanti);
-
     public sealed record StatoPartita
     {
         public ConfigPartita Config { get; init; } = new ConfigPartita();
@@ -69,8 +68,6 @@ namespace Engine.Core
         public int PrimoGiocatore { get; init; }
         public bool Finita { get; init; }
         public int? Vincitore { get; init; }
-        // Combattimento in corso (attaccanti dichiarati, in attesa di blocchi). null fuori dal combat.
-        public Combattimento? Combattimento { get; init; }
         // Definizioni delle carte in gioco (defId -> DefCarta), popolate a iniziaPartita.
         // L'engine le consulta per costi/produzione/stat durante il gioco.
         public IReadOnlyDictionary<string, DefCarta> Carte { get; init; }
