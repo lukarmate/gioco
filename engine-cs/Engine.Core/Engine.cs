@@ -36,8 +36,8 @@ namespace Engine.Core
 
             switch (azione)
             {
-                case AvanzaFase _:
-                    return AvanzaFase(stato);
+                case PassaTurno _:
+                    return PassaTurnoImpl(stato);
                 case Scarta scarta:
                     return ScartaImpl(stato, scarta.Iids);
                 case GiocaAvamposto ga:
@@ -61,29 +61,12 @@ namespace Engine.Core
             return Math.Max(0, g.Mano.Count - stato.Config.LimiteMano);
         }
 
-        private static Risultato AvanzaFase(StatoPartita stato)
+        // v1: passa il turno. End step (scarto a 7) + begin step automatico del prossimo giocatore.
+        private static Risultato PassaTurnoImpl(StatoPartita stato)
         {
-            if (stato.Fase == Fase.End)
-            {
-                if (DaScartare(stato) > 0)
-                    return Risultato.Fallito("devi scartare prima di passare il turno");
-                return FineTurno(stato);
-            }
+            if (DaScartare(stato) > 0)
+                return Risultato.Fallito("devi scartare fino al limite di mano prima di passare il turno");
 
-            int idx = Fasi.Ordine.ToList().IndexOf(stato.Fase);
-            Fase prossima = Fasi.Ordine[idx + 1];
-            var r = Fasi.EseguiEntrataFase(stato with { Fase = prossima }, prossima);
-            var eventi = new List<Evento>(r.Eventi);
-
-            if (prossima == Fase.End && DaScartare(r.Stato) > 0)
-            {
-                eventi.Add(new RichiestaScarto(r.Stato.TurnoDi, DaScartare(r.Stato)));
-            }
-            return Risultato.Successo(r.Stato, eventi);
-        }
-
-        private static Risultato FineTurno(StatoPartita stato)
-        {
             int att = stato.TurnoDi;
             int n = stato.Giocatori.Count;
             int prossimo = (att + 1) % n;
@@ -97,7 +80,7 @@ namespace Engine.Core
                 Giocatori = giocatori,
                 TurnoDi = prossimo,
                 NumeroTurno = stato.NumeroTurno + 1,
-                Fase = Fase.Untap,
+                Fase = Fase.Azioni,
             };
 
             var eventi = new List<Evento>
@@ -107,18 +90,13 @@ namespace Engine.Core
                 new TurnoIniziato(prossimo, statoPassato.NumeroTurno),
             };
 
-            var r = Fasi.EseguiEntrataFase(statoPassato, Fase.Untap);
+            var r = Fasi.InizioTurno(statoPassato);
             eventi.AddRange(r.Eventi);
             return Risultato.Successo(r.Stato, eventi);
         }
 
-        private static bool InMainPhase(Fase f) => f == Fase.Main1 || f == Fase.Main2;
-
         private static Risultato GiocaAvampostoImpl(StatoPartita stato, string iid)
         {
-            if (!InMainPhase(stato.Fase))
-                return Risultato.Fallito("gli avamposti si giocano solo nelle Main Phase");
-
             int att = stato.TurnoDi;
             Giocatore g = stato.Giocatori[att];
             if (g.AvampostoGiocatoQuestoTurno)
@@ -140,9 +118,6 @@ namespace Engine.Core
 
         private static Risultato GiocaCreaturaImpl(StatoPartita stato, string iid)
         {
-            if (!InMainPhase(stato.Fase))
-                return Risultato.Fallito("le creature si giocano solo nelle Main Phase");
-
             int att = stato.TurnoDi;
             Giocatore g = stato.Giocatori[att];
             CartaIstanza? carta = g.Mano.FirstOrDefault(c => c.Iid == iid);
@@ -205,9 +180,6 @@ namespace Engine.Core
         // Attacco diretto stile Hearthstone. Bersaglio = creatura avversaria (iid) o null = HP avversario.
         private static Risultato AttaccaImpl(StatoPartita stato, string attaccanteIid, string? bersaglioIid)
         {
-            if (stato.Fase != Fase.Combat)
-                return Risultato.Fallito("si attacca solo nella fase di Combattimento");
-
             int att = stato.TurnoDi;
             int dif = (att + 1) % stato.Giocatori.Count; // 2p
             Giocatore gAtt = stato.Giocatori[att];
@@ -391,7 +363,7 @@ namespace Engine.Core
 
         private static Risultato ScartaImpl(StatoPartita stato, IReadOnlyList<string> iids)
         {
-            if (stato.Fase != Fase.End) return Risultato.Fallito("scarto solo a fine turno");
+            // v1: lo scarto serve solo quando la mano supera il limite (in qualunque momento del proprio turno).
             int richiesti = DaScartare(stato);
             if (richiesti == 0) return Risultato.Fallito("nessuno scarto richiesto");
             if (iids.Count != richiesti)

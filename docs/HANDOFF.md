@@ -122,8 +122,14 @@ Cartella `engine-cs/`, stesso stile (record immutabili, funzione pura). **55/55 
 - **Keyword combat** (via `KeywordEffettive`): `provocazione` (Taunt — vincolo di targeting: devi colpire prima le creature con Provocazione), `velocita` (ignora summoning sickness), `travolta` (eccesso oltre la salute del bersaglio ucciso → HP del giocatore).
 - Test: `AttaccaTests.cs` (9). Aggiornati i test che usavano il vecchio combat (Effetti morte/passiva/trigger). Helper `E2.MettiInCampo` esteso (sick/iidSuffix).
 
+### ✅ FATTO 2026-06-13: fase unica (Hearthstone-style) — re-baseline slice 2
+**94/94 test verdi.** Collassate le 7 fasi (Untap..End) in **una sola fase `Azioni`**.
+- `Fase` enum → `{ Azioni }`. Begin step (untap + upkeep + pesca) automatico via `Fasi.InizioTurno`, gira a inizio turno del giocatore attivo. End step (scarto a 7) automatico al passaggio turno.
+- Azione `AvanzaFase` → **`PassaTurno`** (end step + begin step del prossimo). Rimossi `Fasi.Ordine`/`EseguiEntrataFase`/`FaseEntrata`/`FineTurno`/`InMainPhase`.
+- Tolti i check "solo nelle Main Phase" da GiocaCreatura/Avamposto e il check fase da Attacca/Scarta (si gioca liberamente nella propria fase Azioni). `Scarta` ora valido quando la mano supera il limite.
+- Test: riscritti `EngineTests`/`FasiTests`, adattati Replay/Setup/Untap + i combat/upkeep. Shim `E2.FinoAMain1` (dopo Avvia sei già in Azioni). Rimossi 2 test phase-negative obsoleti.
+
 **Re-baseline v1 — prossimi slice (vedi `DESIGN_V1.md` §11 + `FEEDBACK...` §6):**
-- **Fase unica** (collassa Untap..End in inizio/azioni/fine; attacco nella fase azioni).
 - **Energia automatica** (+1/turno, cap 8, reset; costo = `ManaCosto.Totale`) al posto del mana colorato/Avamposti.
 - **Fatigue** (danno crescente a mazzo vuoto). **Cap board 6** + board-pieno.
 - **Sistema Obiettivi** (pool, assegnazione, tracking, telegrafo 3-stati, win-check parallelo). **Leader**.

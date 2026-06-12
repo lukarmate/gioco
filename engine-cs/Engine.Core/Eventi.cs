@@ -8,7 +8,6 @@ namespace Engine.Core
 
     public sealed record PartitaIniziata(IReadOnlyList<int> Giocatori, int Primo) : Evento;
     public sealed record TurnoIniziato(int Giocatore, int NumeroTurno) : Evento;
-    public sealed record FaseEntrata(Fase Fase) : Evento;
     public sealed record CartaStappata(string Iid) : Evento;
     public sealed record CartaPescata(int Giocatore, string Iid) : Evento;
     public sealed record MazzoVuoto(int Giocatore) : Evento;

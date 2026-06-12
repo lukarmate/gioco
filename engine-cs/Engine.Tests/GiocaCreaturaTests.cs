@@ -51,16 +51,6 @@ namespace Engine.Tests
         }
 
         [Fact]
-        public void NonGiocaFuoriDallaMainPhase()
-        {
-            var s0 = E2.Avvia(Carte()); // fase untap
-            s0 = H.ConGiocatore(s0, 0, g => g with { ManaDisponibile = new ManaPool { Est = 1 } });
-            var (s, iid) = E2.MettiInMano(s0, 0, "BESTIA");
-            var r = Engine.Core.Engine.Applica(s, new GiocaCreatura(iid));
-            Assert.False(r.Ok);
-        }
-
-        [Fact]
         public void NonGiocaCartaNonInMano()
         {
             var r = Engine.Core.Engine.Applica(Main1ConMana(), new GiocaCreatura("ignoto"));

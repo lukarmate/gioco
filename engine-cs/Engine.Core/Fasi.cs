@@ -3,27 +3,33 @@ using System.Linq;
 
 namespace Engine.Core
 {
+    // v1: una sola fase di gioco (Azioni). Il "begin step" del turno (untap + upkeep + pesca)
+    // è automatico e gira a inizio turno del giocatore attivo (InizioTurno).
     public static class Fasi
     {
-        public static readonly IReadOnlyList<Fase> Ordine = new List<Fase>
-        {
-            Fase.Untap, Fase.Upkeep, Fase.Pesca, Fase.Main1, Fase.Combat, Fase.Main2, Fase.End
-        };
-
         public sealed record RisultatoFase(StatoPartita Stato, IReadOnlyList<Evento> Eventi);
 
-        // Esegue la logica di INGRESSO di una fase per il giocatore attivo.
-        // Non modifica TurnoDi/NumeroTurno (lo fa l'orchestratore in Engine).
-        public static RisultatoFase EseguiEntrataFase(StatoPartita stato, Fase fase)
+        // Begin step automatico: untap, upkeep, pesca. Lascia il giocatore attivo in fase Azioni.
+        public static RisultatoFase InizioTurno(StatoPartita stato)
         {
-            var eventi = new List<Evento> { new FaseEntrata(fase) };
-            switch (fase)
-            {
-                case Fase.Untap: return Untap(stato, eventi);
-                case Fase.Upkeep: return Upkeep(stato, eventi);
-                case Fase.Pesca: return Pesca(stato, eventi);
-                default: return new RisultatoFase(stato, eventi);
-            }
+            var eventi = new List<Evento>();
+            stato = Untap(stato, eventi).Stato;
+            stato = Upkeep(stato, eventi).Stato;
+            stato = Pesca(stato, eventi).Stato;
+            return new RisultatoFase(stato, eventi);
+        }
+
+        // Wrapper pubblici single-arg (comodi per i test).
+        public static RisultatoFase Untap(StatoPartita stato)
+        {
+            var e = new List<Evento>();
+            return Untap(stato, e);
+        }
+
+        public static RisultatoFase Pesca(StatoPartita stato)
+        {
+            var e = new List<Evento>();
+            return Pesca(stato, e);
         }
 
         private static Giocatore[] SostituisciGiocatore(StatoPartita stato, int idx, Giocatore nuovo)
@@ -56,12 +62,10 @@ namespace Engine.Core
             return new RisultatoFase(stato with { Giocatori = giocatori }, eventi);
         }
 
-        // E3 — all'ingresso dell'upkeep, scattano gli effetti upkeep dei permanenti
-        // in campo del giocatore attivo (in ordine di campo).
+        // E3 — all'inizio turno scattano gli effetti upkeep dei permanenti del giocatore attivo.
         private static RisultatoFase Upkeep(StatoPartita stato, List<Evento> eventi)
         {
             int att = stato.TurnoDi;
-            // Snapshot iid+defId prima del loop: gli effetti possono modificare il campo.
             var permanenti = stato.Giocatori[att].Campo.Select(c => (c.Iid, c.DefId)).ToList();
             foreach (var (iid, defId) in permanenti)
             {

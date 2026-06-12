@@ -60,8 +60,6 @@ namespace Engine.Tests
             string att, blk;
             (s, att) = E2.MettiInCampo(s, 0, "GUERRIERO");
             (s, blk) = E2.MettiInCampo(s, 1, "MARTIRE");
-            s = GameEngine.Applica(s, new AvanzaFase()).Stato!; // Main1 -> Combat
-            Assert.Equal(Fase.Combat, s.Fase);
             int mazzo1Prima = s.Giocatori[1].Mazzo.Count;
 
             var r = GameEngine.Applica(s, new Attacca(att, blk));

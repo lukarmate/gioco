@@ -21,7 +21,7 @@ namespace Engine.Tests
             var carta = new CartaIstanza { Iid = "x", DefId = "BESTIA", Proprietario = 0, EntrataQuestoTurno = true };
             s = H.ConGiocatore(s, 0, g => g with { Campo = g.Campo.Concat(new[] { carta }).ToList() });
 
-            var r = Fasi.EseguiEntrataFase(s, Fase.Untap);
+            var r = Fasi.Untap(s);
             Assert.False(r.Stato.Giocatori[0].Campo.First(c => c.Iid == "x").EntrataQuestoTurno);
         }
 
@@ -30,7 +30,7 @@ namespace Engine.Tests
         {
             var s = E2.Avvia(Carte());
             s = H.ConGiocatore(s, 0, g => g with { AvampostoGiocatoQuestoTurno = true });
-            var r = Fasi.EseguiEntrataFase(s, Fase.Untap);
+            var r = Fasi.Untap(s);
             Assert.False(r.Stato.Giocatori[0].AvampostoGiocatoQuestoTurno);
         }
     }

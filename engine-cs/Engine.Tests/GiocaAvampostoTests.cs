@@ -49,15 +49,6 @@ namespace Engine.Tests
         }
 
         [Fact]
-        public void AvampostoSoloNelleMainPhase()
-        {
-            var stato = E2.Avvia(Carte()); // fase untap
-            var (s, iid) = E2.MettiInMano(stato, 0, "AVAMP");
-            var r = Engine.Core.Engine.Applica(s, new GiocaAvamposto(iid));
-            Assert.False(r.Ok);
-        }
-
-        [Fact]
         public void NonGiocaCartaNonAvamposto()
         {
             var (s0, _) = Setup();

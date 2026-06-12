@@ -13,13 +13,9 @@ namespace Engine.Tests
             => new DefCarta(id, "Creatura", Atk: atk, Def: def,
                 Keyword: keyword.Length > 0 ? keyword.ToList() : null);
 
-        // Avvia, porta a Combat (giocatore 0).
+        // Avvia (giocatore 0 già in fase Azioni, può attaccare).
         private static StatoPartita InCombat(IReadOnlyDictionary<string, DefCarta> carte)
-        {
-            var s = E2.Avvia(carte);
-            s = E2.FinoAMain1(s);
-            return GameEngine.Applica(s, new AvanzaFase()).Stato!; // Main1 -> Combat
-        }
+            => E2.Avvia(carte);
 
         private static CartaIstanza Carta(StatoPartita s, int g, string iid)
             => s.Giocatori[g].Campo.First(c => c.Iid == iid);

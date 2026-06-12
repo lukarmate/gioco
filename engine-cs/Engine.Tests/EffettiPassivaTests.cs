@@ -105,7 +105,6 @@ namespace Engine.Tests
             string att, blk;
             (s, att) = E2.MettiInCampo(s, 0, "SOLDATO");
             (s, blk) = E2.MettiInCampo(s, 1, "MURO");
-            s = GameEngine.Applica(s, new AvanzaFase()).Stato!; // Combat
 
             var r = GameEngine.Applica(s, new Attacca(att, blk));
 

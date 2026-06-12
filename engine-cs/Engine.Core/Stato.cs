@@ -2,7 +2,8 @@ using System.Collections.Generic;
 
 namespace Engine.Core
 {
-    public enum Fase { Untap, Upkeep, Pesca, Main1, Combat, Main2, End }
+    // v1: una sola fase di gioco (Hearthstone-style). Begin/end step sono automatici.
+    public enum Fase { Azioni }
 
     public enum PenalitaMazzoVuoto { PerditaImmediata, DannoPerTurno }
 

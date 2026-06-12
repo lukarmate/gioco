@@ -28,7 +28,8 @@ namespace Engine.Core
         IReadOnlyList<IReadOnlyList<string>> Mazzi,
         IReadOnlyDictionary<string, DefCarta> Carte) : Azione;
 
-    public sealed record AvanzaFase : Azione;
+    // v1: passa il turno (end step automatico + begin step del prossimo giocatore).
+    public sealed record PassaTurno : Azione;
 
     public sealed record Scarta(IReadOnlyList<string> Iids) : Azione;
 

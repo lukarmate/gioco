@@ -25,13 +25,14 @@ namespace Engine.Tests
             };
             var s = E2.Avvia(carte);
             (s, _) = E2.MettiInCampo(s, 0, "SANGUISUGA");
+            // L'upkeep scatta nel begin step del giocatore attivo: serve tornare al turno del g0.
+            s = GameEngine.Applica(s, new PassaTurno()).Stato!; // -> g1 (turno 2)
             int mazzoOppPrima = s.Giocatori[1].Mazzo.Count;
 
-            // Fase iniziale = Untap; un AvanzaFase entra in Upkeep e fa scattare gli effetti.
-            var r = GameEngine.Applica(s, new AvanzaFase());
+            var r = GameEngine.Applica(s, new PassaTurno()); // -> g0 (turno 3): upkeep di g0 -> mill g1
 
             Assert.True(r.Ok, r.Errore);
-            Assert.Equal(Fase.Upkeep, r.Stato!.Fase);
+            Assert.Equal(0, r.Stato!.TurnoDi);
             Assert.Equal(mazzoOppPrima - 1, r.Stato.Giocatori[1].Mazzo.Count);
             Assert.Single(r.Eventi.OfType<CartaMacinata>());
         }
@@ -45,11 +46,8 @@ namespace Engine.Tests
                     new Effetto(Trigger.Attacco, new AzioneEffetto[] { new Pesca(1) })),
             };
             var s = E2.Avvia(carte);
-            s = E2.FinoAMain1(s);
             string iid;
             (s, iid) = E2.MettiInCampo(s, 0, "PREDONE"); // niente summoning sickness (default)
-            s = GameEngine.Applica(s, new AvanzaFase()).Stato!; // Main1 -> Combat
-            Assert.Equal(Fase.Combat, s.Fase);
             int mazzoPrima = s.Giocatori[0].Mazzo.Count;
 
             var r = GameEngine.Applica(s, new Attacca(iid)); // bersaglio null = HP avversario

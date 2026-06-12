@@ -17,8 +17,7 @@ namespace Engine.Tests
             var azioni = new List<Azione>
             {
                 new IniziaPartita(seed, Config, mazzi, carte),
-                new AvanzaFase(), new AvanzaFase(), new AvanzaFase(),
-                new AvanzaFase(), new AvanzaFase(), new AvanzaFase(), new AvanzaFase(),
+                new PassaTurno(), new PassaTurno(), new PassaTurno(), new PassaTurno(),
             };
             StatoPartita? stato = null;
             foreach (var a in azioni)

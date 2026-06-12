@@ -52,7 +52,7 @@ namespace Engine.Core
                 Giocatori = giocatori,
                 TurnoDi = 0,
                 NumeroTurno = 1,
-                Fase = Fase.Untap,
+                Fase = Fase.Azioni,
                 PrimoGiocatore = 0,
                 Finita = false,
                 Carte = args.Carte,
@@ -62,7 +62,6 @@ namespace Engine.Core
             {
                 new PartitaIniziata(giocatori.Select(g => g.Id).ToList(), 0),
                 new TurnoIniziato(0, 1),
-                new FaseEntrata(Fase.Untap),
             };
 
             return new RisultatoSetup(stato, eventi);

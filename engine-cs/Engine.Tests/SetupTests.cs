@@ -25,7 +25,7 @@ namespace Engine.Tests
             Assert.Equal(3, r.Stato.Giocatori[0].Mazzo.Count);
             Assert.Equal(0, r.Stato.TurnoDi);
             Assert.Equal(1, r.Stato.NumeroTurno);
-            Assert.Equal(Fase.Untap, r.Stato.Fase);
+            Assert.Equal(Fase.Azioni, r.Stato.Fase);
             Assert.Equal(30, r.Stato.Giocatori[0].Hp);
             var ev = Assert.IsType<PartitaIniziata>(r.Eventi[0]);
             Assert.Equal(new[] { 0, 1 }, ev.Giocatori);

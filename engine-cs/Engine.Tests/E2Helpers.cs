@@ -45,13 +45,7 @@ namespace Engine.Tests
             return (ns, iid);
         }
 
-        // Porta lo stato fino alla fase Main1 (giocatore 0, turno 1).
-        public static StatoPartita FinoAMain1(StatoPartita s)
-        {
-            // untap -> upkeep -> pesca -> main1  = 3 avanzamenti
-            for (int k = 0; k < 3; k++)
-                s = Engine.Core.Engine.Applica(s, new AvanzaFase()).Stato!;
-            return s;
-        }
+        // v1: dopo Avvia il giocatore 0 è già in fase Azioni e può agire. Shim per compat coi test.
+        public static StatoPartita FinoAMain1(StatoPartita s) => s;
     }
 }
