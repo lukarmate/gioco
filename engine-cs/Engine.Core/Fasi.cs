@@ -9,15 +9,25 @@ namespace Engine.Core
     {
         public sealed record RisultatoFase(StatoPartita Stato, IReadOnlyList<Evento> Eventi);
 
-        // Begin step automatico: energia, untap, upkeep, pesca. Lascia il giocatore in fase Azioni.
+        // Begin step automatico: reset contatori, energia, untap, upkeep, pesca. Lascia in fase Azioni.
         public static RisultatoFase InizioTurno(StatoPartita stato)
         {
             var eventi = new List<Evento>();
+            stato = ResetContatori(stato);
             stato = Energia(stato, eventi).Stato;
             stato = Untap(stato, eventi).Stato;
             stato = Upkeep(stato, eventi).Stato;
             stato = Pesca(stato, eventi).Stato;
             return new RisultatoFase(stato, eventi);
+        }
+
+        // Azzera gli accumulatori per-turno del giocatore attivo (per gli obiettivi).
+        private static StatoPartita ResetContatori(StatoPartita stato)
+        {
+            int att = stato.TurnoDi;
+            Giocatore g = stato.Giocatori[att];
+            var nuovo = g with { CarteGiocateQuestoTurno = 0, DanniAvversarioQuestoTurno = 0 };
+            return stato with { Giocatori = SostituisciGiocatore(stato, att, nuovo) };
         }
 
         // v1: a inizio turno EnergiaMax += 1 (fino al cap), Energia ricaricata a EnergiaMax.

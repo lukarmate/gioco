@@ -51,6 +51,9 @@ namespace Engine.Core
         // Fatigue: numero di pescate a mazzo vuoto subite (il danno cresce di 1 ogni volta).
         public int Fatigue { get; init; }
         public int Morti { get; init; }
+        // Accumulatori per-turno (per gli obiettivi). Reset all'inizio del proprio turno.
+        public int CarteGiocateQuestoTurno { get; init; }
+        public int DanniAvversarioQuestoTurno { get; init; }
         // Obiettivo segreto assegnato (id nel registro Obiettivi). null = nessuno (es. nei test legacy).
         public string? ObiettivoId { get; init; }
         public ProgressoObiettivo ObiettivoProgresso { get; init; }

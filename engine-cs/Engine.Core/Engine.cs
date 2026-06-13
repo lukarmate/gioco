@@ -118,7 +118,11 @@ namespace Engine.Core
             var mano = g.Mano.Where(c => c.Iid != iid).ToList();
             var inCampo = carta with { EntrataQuestoTurno = true };
             var campo = g.Campo.Concat(new[] { inCampo }).ToList();
-            var nuovo = g with { Mano = mano, Campo = campo, Energia = g.Energia - costo };
+            var nuovo = g with
+            {
+                Mano = mano, Campo = campo, Energia = g.Energia - costo,
+                CarteGiocateQuestoTurno = g.CarteGiocateQuestoTurno + 1,
+            };
             var giocatori = stato.Giocatori.Select((gg, i) => i == att ? nuovo : gg).ToArray();
             var nuovoStato = stato with { Giocatori = giocatori };
             var eventi = new List<Evento> { new CreaturaGiocata(att, iid) };
@@ -256,7 +260,11 @@ namespace Engine.Core
             if (danno <= 0) return stato;
             Giocatore g = stato.Giocatori[giocatore];
             int hp = g.Hp - danno;
-            var giocatori = stato.Giocatori.Select((gg, i) => i == giocatore ? gg with { Hp = hp } : gg).ToArray();
+            // accumulatore obiettivi: danno inflitto all'avversario dall'attaccante, questo turno
+            var giocatori = stato.Giocatori.Select((gg, i) =>
+                i == giocatore ? gg with { Hp = hp }
+                : i == attaccante ? gg with { DanniAvversarioQuestoTurno = gg.DanniAvversarioQuestoTurno + danno }
+                : gg).ToArray();
             stato = stato with { Giocatori = giocatori };
             ev.Add(new DannoGiocatore(giocatore, danno));
             if (hp <= 0 && !stato.Finita)

@@ -27,8 +27,12 @@ namespace Engine.Core
                     int soglia = 12;
                     return (Math.Max(0, hp0 - s.Giocatori[opp].Hp), Math.Max(1, hp0 - soglia));
                 }),
+                ["OB-03"] = (new DefObiettivo("OB-03", "Colpo Grosso"), (s, g) =>
+                    (s.Giocatori[g].DanniAvversarioQuestoTurno, 7)),
                 ["OB-05"] = (new DefObiettivo("OB-05", "Esercito"), (s, g) =>
                     (Creature(s, g), 4)),
+                ["OB-13"] = (new DefObiettivo("OB-13", "Profusione"), (s, g) =>
+                    (s.Giocatori[g].CarteGiocateQuestoTurno, 4)),
                 ["OB-14"] = (new DefObiettivo("OB-14", "Eco dei Caduti"), (s, g) =>
                     (s.Giocatori[g].Cimitero.Count, 8)),
             };
