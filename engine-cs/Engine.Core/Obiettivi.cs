@@ -35,7 +35,30 @@ namespace Engine.Core
                     (s.Giocatori[g].CarteGiocateQuestoTurno, 4)),
                 ["OB-14"] = (new DefObiettivo("OB-14", "Eco dei Caduti"), (s, g) =>
                     (s.Giocatori[g].Cimitero.Count, 8)),
+                // Streak: il progresso è il contatore StreakObiettivo (aggiornato a fine turno).
+                ["OB-01"] = (new DefObiettivo("OB-01", "Ferite Aperte"), (s, g) =>
+                    (s.Giocatori[g].StreakObiettivo, 3)),
+                ["OB-07"] = (new DefObiettivo("OB-07", "Dominio"), (s, g) =>
+                    (s.Giocatori[g].StreakObiettivo, 3)),
             };
+
+        // Condizione "per turno" degli obiettivi streak: valutata a fine turno del giocatore.
+        // Se vera lo streak cresce di 1, altrimenti si azzera.
+        private static readonly Dictionary<string, Func<StatoPartita, int, bool>> StreakCondizioni
+            = new()
+            {
+                ["OB-01"] = (s, g) => s.Giocatori[g].DanniAvversarioQuestoTurno > 0,
+                ["OB-07"] = (s, g) => Creature(s, g) > Creature(s, (g + 1) % s.Giocatori.Count),
+            };
+
+        // Da chiamare a FINE turno del giocatore g (prima di passare): aggiorna il suo streak.
+        public static StatoPartita AggiornaStreak(StatoPartita s, int g)
+        {
+            string? id = s.Giocatori[g].ObiettivoId;
+            if (id == null || !StreakCondizioni.TryGetValue(id, out var cond)) return s;
+            int streak = cond(s, g) ? s.Giocatori[g].StreakObiettivo + 1 : 0;
+            return Sostituisci(s, g, s.Giocatori[g] with { StreakObiettivo = streak });
+        }
 
         public static IReadOnlyCollection<DefObiettivo> Pool => Reg.Values.Select(v => v.Def).ToList();
 

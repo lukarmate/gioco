@@ -78,6 +78,9 @@ namespace Engine.Core
             int n = stato.Giocatori.Count;
             int prossimo = (att + 1) % n;
 
+            // Obiettivi streak: valuta la condizione a fine turno del giocatore che sta passando.
+            stato = Obiettivi.AggiornaStreak(stato, att);
+
             var statoPassato = stato with
             {
                 TurnoDi = prossimo,

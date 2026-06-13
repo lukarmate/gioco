@@ -15,7 +15,7 @@
 - ✅ **Energia automatica** (cap 8) — tagliati mana colorato + avamposti
 - ✅ **Fatigue** (danno crescente a mazzo vuoto) + **cap board 6** (token in eccesso fizzlano)
 - ✅ Interprete effetti E3 completo (etb/upkeep/attacco/morte/attivata/passiva)
-- 🟡 **Obiettivi segreti**: framework + snapshot (OB-02/05/14) + accumulatori per-turno (OB-03/13) fatti; resta slice 3 (**streak** turni-consecutivi + resto del pool)
+- ✅ **Obiettivi segreti** (meccanica-firma): tutti e 3 i meccanismi (snapshot/accumulatore/streak) + 7 obiettivi (OB-01/02/03/05/07/13/14). Aggiungere il resto del pool §3 = solo nuove voci nel registry (meccanico)
 - ⬜ Resta: **Leader**
 
 **Test:** `cd engine-cs && dotnet test` (un solo run per volta, macchina lenta — vedi nota in fondo). **Build DLL Unity:** `engine-cs/build-for-unity.sh`. **Vista Unity:** `GiocoTCG/` (mano 3D con testo, `CampoView.cs`).
@@ -226,7 +226,7 @@ Nessun lavoro attivo in esecuzione. Bivio deciso a inizio prossima sessione:
 | E4 | Combattimento **diretto Hearthstone** (Attacca, danno persistente, Provoc./Veloc./Travolta) | ✅ fatto (2p) |
 | Fatigue | Danno crescente a mazzo vuoto (`PenalitaMazzoVuoto.Fatigue`, contatore `Giocatore.Fatigue`) | ✅ fatto |
 | Board | Cap 6 slot (`ConfigPartita.CapCampo`); GiocaCreatura fallisce se pieno, token in eccesso fizzlano | ✅ fatto |
-| Obiettivi | Obiettivo segreto — **meccanica-firma** | 🟡 slice 1 (framework `Obiettivi.cs` + telegrafo + win-check hook + snapshot OB-02/05/14) + slice 2 (accumulatori per-turno `CarteGiocateQuestoTurno`/`DanniAvversarioQuestoTurno`, reset a inizio turno; OB-03/13). Resta slice 3: **streak** turni-consecutivi (OB-01/07/11/...) + resto pool §3 |
+| Obiettivi | Obiettivo segreto — **meccanica-firma** | ✅ tutti e 3 i meccanismi: snapshot (OB-02/05/14), accumulatori per-turno (OB-03/13), **streak** turni-consecutivi (`StreakObiettivo` + `Obiettivi.AggiornaStreak` a fine turno; OB-01/07). Framework in `Obiettivi.cs` + win-check hook in `Engine.Applica`. Resto del pool §3 = nuove voci nel registry |
 | Leader | Leader: Zona Comando, hero power, passiva debole, morte→ritorno + costo incrementale | ⬜ |
 | ~~E5~~ | ~~Stack & priorità~~ | ❌ tagliato in v1 |
 | ~~respawn 3-vite / FFA~~ | ~~vite multiple, multiplayer~~ | ❌ tagliato in v1 (→ v2) |

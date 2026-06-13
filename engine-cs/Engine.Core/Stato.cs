@@ -54,6 +54,8 @@ namespace Engine.Core
         // Accumulatori per-turno (per gli obiettivi). Reset all'inizio del proprio turno.
         public int CarteGiocateQuestoTurno { get; init; }
         public int DanniAvversarioQuestoTurno { get; init; }
+        // Streak: turni consecutivi in cui la condizione dell'obiettivo è soddisfatta a fine turno.
+        public int StreakObiettivo { get; init; }
         // Obiettivo segreto assegnato (id nel registro Obiettivi). null = nessuno (es. nei test legacy).
         public string? ObiettivoId { get; init; }
         public ProgressoObiettivo ObiettivoProgresso { get; init; }
