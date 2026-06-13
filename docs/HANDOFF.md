@@ -1,7 +1,25 @@
 # HANDOFF — Stato lavori Gioco TCG
 
 > File di passaggio aggiornato a fine di ogni sessione. Dice **dove siamo** e **cosa manca**.
-> Ultimo aggiornamento: **2026-06-10**
+> Ultimo aggiornamento: **2026-06-13**
+
+---
+
+## 🎯 STATO ATTUALE (2026-06-13) — re-baseline v1 in corso
+
+**Decisione prodotto:** v1 commerciale snello (1v1, partite 5-7 min, Snap×Magic), monetizzazione crediti+pack+craft+ads, obiettivo **exit**. Spec: **`DESIGN_V1.md`** (decisioni chiuse §12, post-review Fable 5 in `FEEDBACK_DESIGN_V1_E_OBIETTIVI.md`). Il design completo MTG-like resta in `REGOLE_BASE_TCG.md` come "v2 avanzato".
+
+**Engine C# (`engine-cs/`), branch `feature/unity-engine-csharp`, 78 test verdi.** Re-baseline v1:
+- ✅ Combat **diretto Hearthstone** (`Attacca`) + danno persistente + keyword Provocazione/Velocità/Travolta
+- ✅ **Fase unica** (`PassaTurno`, begin/end step automatici)
+- ✅ **Energia automatica** (cap 8) — tagliati mana colorato + avamposti
+- ✅ **Fatigue** (danno crescente a mazzo vuoto) + **cap board 6** (token in eccesso fizzlano)
+- ✅ Interprete effetti E3 completo (etb/upkeep/attacco/morte/attivata/passiva)
+- ⬜ Resta: **Obiettivi segreti** (meccanica-firma) · **Leader**
+
+**Test:** `cd engine-cs && dotnet test` (un solo run per volta, macchina lenta — vedi nota in fondo). **Build DLL Unity:** `engine-cs/build-for-unity.sh`. **Vista Unity:** `GiocoTCG/` (mano 3D con testo, `CampoView.cs`).
+
+> ⚠️ Le sezioni datate qui sotto sono il **log cronologico** del lavoro (incluso il vecchio modello a fasi/mana E1-E2-E4, poi sostituito). Per lo stato vero leggi questo blocco + `DESIGN_V1.md`.
 
 ---
 
@@ -197,16 +215,20 @@ Nessun lavoro attivo in esecuzione. Bivio deciso a inizio prossima sessione:
 
 ## 4. ROADMAP — cosa manca 🗺️
 
-### Engine (7 slice, E1 fatto)
+### Engine — roadmap aggiornata al modello v1 (vedi `DESIGN_V1.md`)
 | Slice | Cosa | Stato |
 |---|---|---|
 | E1 | Core loop + eventi | ✅ fatto |
-| E2 | Giocare permanenti + mana (avamposti→mana, creature vanilla, summoning sickness) | ⬜ |
-| E3 | Interprete effetti (esegue i verbi di carte.json) | ✅ core fatto: E3a · E3b (loader) · E3c.1 (upkeep/attacco/token) · E3c.2 (morte/attivata) · E3c.3 (passiva/layer stat). Resta E3c.4 incrementale (map buff nel loader, verbi con scelta, danno/segnalini su creatura, state-based) |
-| E4 | Combattimento (attacco/blocco/danno/morti) | 🟡 core fatto (2p) |
-| E5 | Stack & priorità (Istanti, LIFO) | ⬜ |
-| E6 | Vittoria/obiettivi segreti/respawn 3-vite | ⬜ |
-| E7 | Leader/Alleati (commander, fedeltà, evoluzione) | ⬜ |
+| Fase unica | Una sola fase `Azioni` + `PassaTurno` (begin/end automatici) | ✅ fatto |
+| Energia | Energia automatica (cap 8), costo = `ManaCosto.Totale`; avamposti tagliati | ✅ fatto |
+| E3 | Interprete effetti (etb/upkeep/attacco/morte/attivata/passiva) | ✅ core fatto. Resta E3c.4 incrementale (map buff nel loader, verbi con scelta, segnalini su creatura) |
+| E4 | Combattimento **diretto Hearthstone** (Attacca, danno persistente, Provoc./Veloc./Travolta) | ✅ fatto (2p) |
+| Fatigue | Danno crescente a mazzo vuoto (`PenalitaMazzoVuoto.Fatigue`, contatore `Giocatore.Fatigue`) | ✅ fatto |
+| Board | Cap 6 slot (`ConfigPartita.CapCampo`); GiocaCreatura fallisce se pieno, token in eccesso fizzlano | ✅ fatto |
+| Obiettivi | Obiettivo segreto (pool, assegnazione, tracking, telegrafo 3-stati, win-check parallelo a HP) — **meccanica-firma** | ⬜ |
+| Leader | Leader: Zona Comando, hero power, passiva debole, morte→ritorno + costo incrementale | ⬜ |
+| ~~E5~~ | ~~Stack & priorità~~ | ❌ tagliato in v1 |
+| ~~respawn 3-vite / FFA~~ | ~~vite multiple, multiplayer~~ | ❌ tagliato in v1 (→ v2) |
 
 ### Altri pezzi
 - **Parser**: estendere vocabolario per abbassare i 121 CAT3 (long tail: upkeep composti, trigger reattivi, abilità attivate) — opzionale/incrementale.

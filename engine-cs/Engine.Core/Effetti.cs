@@ -277,6 +277,12 @@ namespace Engine.Core
             StatoPartita stato, int ctrl, string sorgenteIid, GeneraToken t, List<Evento> ev)
         {
             int dest = t.Controllore == "avversario" ? (ctrl + 1) % stato.Giocatori.Count : ctrl;
+
+            // Cap board: se il campo del destinatario è pieno, il token fizzla (non entra).
+            int cap = stato.Config.CapCampo > 0 ? stato.Config.CapCampo : 6;
+            if (stato.Giocatori[dest].Campo.Count(c => ECreatura(stato, c)) >= cap)
+                return stato;
+
             string tokDefId = "TOKEN_" + t.Nome;
 
             // Registra la definizione del token (con stat) se non già presente.

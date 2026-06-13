@@ -5,7 +5,7 @@ namespace Engine.Core
     // v1: una sola fase di gioco (Hearthstone-style). Begin/end step sono automatici.
     public enum Fase { Azioni }
 
-    public enum PenalitaMazzoVuoto { PerditaImmediata, DannoPerTurno }
+    public enum PenalitaMazzoVuoto { PerditaImmediata, DannoPerTurno, Fatigue }
 
     public sealed record ConfigPartita
     {
@@ -17,6 +17,8 @@ namespace Engine.Core
         public int? DannoMazzoVuoto { get; init; } // usato se penalita = DannoPerTurno
         // v1: cap dell'energia massima (DESIGN_V1 = 8). 0 => default 8.
         public int CapEnergia { get; init; }
+        // v1: cap delle creature in campo per giocatore (DESIGN_V1 = 6). 0 => default 6.
+        public int CapCampo { get; init; }
     }
 
     public sealed record CartaIstanza
@@ -46,6 +48,8 @@ namespace Engine.Core
         // disponibile, ricaricata a EnergiaMax all'inizio del proprio turno.
         public int Energia { get; init; }
         public int EnergiaMax { get; init; }
+        // Fatigue: numero di pescate a mazzo vuoto subite (il danno cresce di 1 ogni volta).
+        public int Fatigue { get; init; }
         public int Morti { get; init; }
     }
 

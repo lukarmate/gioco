@@ -97,6 +97,10 @@ namespace Engine.Core
             if (def.Tipo.IndexOf("Creatura", System.StringComparison.OrdinalIgnoreCase) < 0)
                 return Risultato.Fallito("la carta non è una creatura");
 
+            int cap = stato.Config.CapCampo > 0 ? stato.Config.CapCampo : 6;
+            if (g.Campo.Count(c => ECreatura(stato, c)) >= cap)
+                return Risultato.Fallito("campo pieno");
+
             int costo = def.Costo?.Totale ?? 0;
             if (g.Energia < costo) return Risultato.Fallito("energia insufficiente");
 

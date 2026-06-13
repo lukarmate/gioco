@@ -11,6 +11,7 @@ namespace Engine.Core
     public sealed record CartaStappata(string Iid) : Evento;
     public sealed record CartaPescata(int Giocatore, string Iid) : Evento;
     public sealed record MazzoVuoto(int Giocatore) : Evento;
+    public sealed record FatigueSubita(int Giocatore, int Danno) : Evento;
     public sealed record EnergiaRicaricata(int Giocatore, int Energia) : Evento;
     public sealed record RichiestaScarto(int Giocatore, int Quantita) : Evento;
     public sealed record CartaScartata(int Giocatore, string Iid) : Evento;

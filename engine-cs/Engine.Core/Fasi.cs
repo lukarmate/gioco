@@ -117,6 +117,24 @@ namespace Engine.Core
             int att = stato.TurnoDi;
             eventi.Add(new MazzoVuoto(att));
 
+            if (stato.Config.PenalitaMazzoVuoto == PenalitaMazzoVuoto.Fatigue)
+            {
+                Giocatore g = stato.Giocatori[att];
+                int fat = g.Fatigue + 1;          // danno crescente: 1, 2, 3, ...
+                int hp = g.Hp - fat;
+                var giocatori = SostituisciGiocatore(stato, att, g with { Fatigue = fat, Hp = hp });
+                eventi.Add(new FatigueSubita(att, fat));
+
+                if (hp <= 0)
+                {
+                    int? vincF = stato.Giocatori.Count == 2 ? (att + 1) % 2 : (int?)null;
+                    eventi.Add(new PartitaFinita(vincF, "fatigue"));
+                    return new RisultatoFase(
+                        stato with { Giocatori = giocatori, Finita = true, Vincitore = vincF }, eventi);
+                }
+                return new RisultatoFase(stato with { Giocatori = giocatori }, eventi);
+            }
+
             if (stato.Config.PenalitaMazzoVuoto == PenalitaMazzoVuoto.DannoPerTurno)
             {
                 int danno = stato.Config.DannoMazzoVuoto ?? 1;
