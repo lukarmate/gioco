@@ -211,7 +211,25 @@ namespace Engine.Core
         private static StatoPartita EseguiInfliggiDanno(
             StatoPartita stato, int ctrl, Bersaglio bersaglio, int valore, List<Evento> ev)
         {
-            // E3a: solo bersagli di tipo "giocatore".
+            // Bersaglio creatura: accumula Danno (la morte la decide lo state-based globale).
+            if (bersaglio.Tipo == "creatura")
+            {
+                if (bersaglio.Quantificatore == Quantificatore.Una) return stato; // scelta -> 🟡
+                foreach (int idx in RisolviGiocatori(stato, ctrl, bersaglio.Proprietario).ToList())
+                {
+                    Giocatore g = stato.Giocatori[idx];
+                    var campo = g.Campo.Select(c =>
+                    {
+                        if (!ECreatura(stato, c)) return c;
+                        ev.Add(new DannoCreatura(c.Iid, valore));
+                        return c with { Danno = c.Danno + valore };
+                    }).ToList();
+                    stato = stato with { Giocatori = Sostituisci(stato, idx, g with { Campo = campo }) };
+                }
+                return stato;
+            }
+
+            // Bersaglio giocatore.
             foreach (int idx in RisolviGiocatori(stato, ctrl, bersaglio.Proprietario).ToList())
             {
                 Giocatore g = stato.Giocatori[idx];

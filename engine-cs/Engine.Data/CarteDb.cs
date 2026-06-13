@@ -86,6 +86,20 @@ namespace Engine.Data
                     return new Mill(LeggiBersaglio(a, "giocatore", Proprietario.Avversario), IntOpt(a, "valore"));
                 case "genera_token":
                     return LeggiToken(a);
+                case "modifica_stat":
+                {
+                    string? stat = StrOpt(a, "stat");
+                    int v = IntOpt(a, "valore");
+                    bool atkStat = string.Equals(stat, "ATK", System.StringComparison.OrdinalIgnoreCase);
+                    return new ModificaStat(LeggiBersaglio(a, "creatura", Proprietario.Tutti),
+                        atkStat ? v : 0, atkStat ? 0 : v);
+                }
+                case "modifica_stat_combo":
+                    return new ModificaStat(LeggiBersaglio(a, "creatura", Proprietario.Tutti),
+                        IntOpt(a, "atk"), IntOpt(a, "def"));
+                case "concedi_keyword":
+                    return new ConcediKeyword(LeggiBersaglio(a, "creatura", Proprietario.Tutti),
+                        StrOpt(a, "keyword") ?? "");
                 default:
                     return null;
             }

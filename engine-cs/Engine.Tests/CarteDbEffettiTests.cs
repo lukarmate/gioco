@@ -122,9 +122,8 @@ namespace Engine.Tests
         }
 
         [Fact]
-        public void VerboNonSupportato_scartato_effettoVuotoOmesso()
+        public void ModificaStat_mappato()
         {
-            // modifica_stat non è ancora interpretabile (E3c) -> azione scartata.
             string json = """
             [ { "id": "X", "tipo": "Magia", "effetti": [
                 { "trigger": "passiva", "azioni": [
@@ -132,22 +131,40 @@ namespace Engine.Tests
                       "target": { "tipo": "creatura", "proprietario": "TUTTI", "quantificatore": "tutte" } } ] } ] } ]
             """;
             var m = CarteDb.CaricaCarte(json);
-            Assert.Null(m["X"].Effetti); // nessun verbo supportato -> niente effetti
+            var az = Assert.IsType<ModificaStat>(m["X"].Effetti!.Single().Azioni.Single());
+            Assert.Equal(1, az.Atk);
+            Assert.Equal(0, az.Def);
         }
 
         [Fact]
-        public void PiuAzioni_soloLeSupportateRestano()
+        public void ModificaStatCombo_eConcediKeyword_mappati()
         {
             string json = """
-            [ { "id": "Y", "tipo": "Creatura", "effetti": [
-                { "trigger": "etb", "azioni": [
-                    { "verbo": "pesca", "valore": 1 },
+            [ { "id": "Y", "tipo": "Magia", "effetti": [
+                { "trigger": "passiva", "azioni": [
+                    { "verbo": "modifica_stat_combo", "atk": -1, "def": -1,
+                      "target": { "tipo": "creatura", "proprietario": "AVVERSARIO", "quantificatore": "tutte" } },
                     { "verbo": "concedi_keyword", "keyword": "arcano",
                       "target": { "tipo": "creatura", "proprietario": "TUE" } } ] } ] } ]
             """;
             var m = CarteDb.CaricaCarte(json);
-            var az = Assert.Single(m["Y"].Effetti!.Single().Azioni);
-            Assert.Equal(new Pesca(1), az);
+            var azioni = m["Y"].Effetti!.Single().Azioni;
+            var combo = Assert.IsType<ModificaStat>(azioni[0]);
+            Assert.Equal((-1, -1), (combo.Atk, combo.Def));
+            var kw = Assert.IsType<ConcediKeyword>(azioni[1]);
+            Assert.Equal("arcano", kw.Keyword);
+        }
+
+        [Fact]
+        public void VerboNonSupportato_scartato()
+        {
+            // segnalino_stat non è ancora interpretabile -> azione scartata.
+            string json = """
+            [ { "id": "Z", "tipo": "Magia", "effetti": [
+                { "trigger": "passiva", "azioni": [ { "verbo": "segnalino_stat", "atk": 1, "def": 1 } ] } ] } ]
+            """;
+            var m = CarteDb.CaricaCarte(json);
+            Assert.Null(m["Z"].Effetti);
         }
 
         // Smoke sul dataset reale: carica dist-motore/carte.json e verifica che il

@@ -23,9 +23,9 @@
 ### 🔧 DA RIFINIRE / DA FARE (engine v1)
 Ordine di priorità:
 - ✅ **Magie (`GiocaMagia`)** — fatto. Gioca dalla mano → esegue effetti one-shot → cimitero. (Verbi one-shot danno/pesca/distruggi/mill ok; le magie con `modifica_stat`/`concedi_keyword` aspettano i modificatori persistenti, sotto.)
-- 🟠 **Loader buff:** `CarteDb` scarta `modifica_stat`/`modifica_stat_combo`/`concedi_keyword` → mapparli (AST+executor già pronti per le passive continue).
-- 🟠 **`infliggi_danno` a creatura:** oggi solo bersaglio-giocatore; col danno persistente è banale (accumula `CartaIstanza.Danno`).
-- 🟠 **State-based death dopo ogni azione:** ora la morte per DEF≤0 si controlla solo dopo `Attacca`; va fatto girare dopo ogni azione (es. debuff da passiva che porta a 0).
+- ✅ **Loader buff:** `CarteDb` ora mappa `modifica_stat`/`modifica_stat_combo`/`concedi_keyword` → AST (le passive continue delle carte vere funzionano). Restano `applica_stat`/`segnalino_stat` (scartati, vedi sotto).
+- ✅ **`infliggi_danno` a creatura:** accumula `CartaIstanza.Danno`; la morte la decide lo state-based globale.
+- ✅ **State-based death dopo ogni azione:** `MortiStateBased` gira in `Engine.Applica` dopo ogni azione (non più solo dopo `Attacca`).
 - 🟠 **Modifica-stat persistente su creatura (segnalini):** serve per le magie/effetti one-shot che buffano/debuffano (es. magia −2/−2 a una creatura). Oggi `ModificaStat` è solo aura continua (sorgente in campo). Serve un modello di modificatori persistenti su `CartaIstanza`.
 - 🟡 **Resto pool obiettivi (22):** OB-09/10/11 (creature distrutte/turno), OB-16/17 (leader in campo), OB-19/20/21 (danno subito) → servono contatori nuovi. OB-04/06/08/12/15/22 ecc.
 - 🟡 **Verbi con scelta (`quantificatore: una`):** targeting input (per distruggi/danno/buff a bersaglio singolo).

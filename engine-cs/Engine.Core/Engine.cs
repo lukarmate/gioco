@@ -37,10 +37,12 @@ namespace Engine.Core
             Risultato r = Dispatch(stato, azione);
             if (!r.Ok || r.Stato is null) return r;
 
-            // Dopo ogni azione: valuta gli obiettivi segreti (vittoria parallela agli HP).
-            var (s2, evObj) = Obiettivi.AggiornaEControlla(r.Stato);
-            if (evObj.Count == 0) return r;
-            return Risultato.Successo(s2, r.Eventi.Concat(evObj).ToList());
+            var eventi = new List<Evento>(r.Eventi);
+            // Dopo ogni azione: morte state-based (creature con Danno >= DEF effettiva), poi obiettivi.
+            StatoPartita s = MortiStateBased(r.Stato, eventi);
+            var (s2, evObj) = Obiettivi.AggiornaEControlla(s);
+            eventi.AddRange(evObj);
+            return Risultato.Successo(s2, eventi);
         }
 
         private static Risultato Dispatch(StatoPartita stato, Azione azione)
@@ -344,8 +346,7 @@ namespace Engine.Core
                 }
             }
 
-            // Morti state-based (Danno >= DEF effettiva) + trigger morte.
-            stato = MortiStateBased(stato, eventi);
+            // La morte state-based gira a livello globale dopo ogni azione (in Applica).
             return Risultato.Successo(stato, eventi);
         }
 
