@@ -29,7 +29,11 @@ namespace Engine.Core
             StatoLeader? lead = g.Leader;
             if (lead != null && lead.CooldownHeroPower > 0)
                 lead = lead with { CooldownHeroPower = lead.CooldownHeroPower - 1 };
-            var nuovo = g with { CarteGiocateQuestoTurno = 0, DanniAvversarioQuestoTurno = 0, Leader = lead };
+            var nuovo = g with
+            {
+                CarteGiocateQuestoTurno = 0, DanniAvversarioQuestoTurno = 0,
+                AttacchiQuestoTurno = 0, EnergiaSpesaQuestoTurno = 0, Leader = lead,
+            };
             return stato with { Giocatori = SostituisciGiocatore(stato, att, nuovo) };
         }
 

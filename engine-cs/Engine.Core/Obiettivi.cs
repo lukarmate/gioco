@@ -31,6 +31,14 @@ namespace Engine.Core
                     (s.Giocatori[g].DanniAvversarioQuestoTurno, 7)),
                 ["OB-05"] = (new DefObiettivo("OB-05", "Esercito"), (s, g) =>
                     (Creature(s, g), 4)),
+                ["OB-06"] = (new DefObiettivo("OB-06", "Orda"), (s, g) =>
+                    (Creature(s, g), 5)),
+                ["OB-15"] = (new DefObiettivo("OB-15", "Ultima Riserva"), (s, g) =>
+                    (s.Giocatori[g].EnergiaSpesaQuestoTurno, 8)),
+                ["OB-19"] = (new DefObiettivo("OB-19", "Fortezza"), (s, g) =>
+                    (s.NumeroTurno >= 7 ? s.Giocatori[g].Hp : 0, 24)),
+                ["OB-22"] = (new DefObiettivo("OB-22", "Sfida Aperta"), (s, g) =>
+                    (s.Giocatori[g].AttacchiQuestoTurno, 4)),
                 ["OB-13"] = (new DefObiettivo("OB-13", "Profusione"), (s, g) =>
                     (s.Giocatori[g].CarteGiocateQuestoTurno, 4)),
                 ["OB-14"] = (new DefObiettivo("OB-14", "Eco dei Caduti"), (s, g) =>
@@ -40,6 +48,8 @@ namespace Engine.Core
                     (s.Giocatori[g].StreakObiettivo, 3)),
                 ["OB-07"] = (new DefObiettivo("OB-07", "Dominio"), (s, g) =>
                     (s.Giocatori[g].StreakObiettivo, 3)),
+                ["OB-12"] = (new DefObiettivo("OB-12", "Mente Lucida"), (s, g) =>
+                    (s.Giocatori[g].StreakObiettivo, 2)),
             };
 
         // Condizione "per turno" degli obiettivi streak: valutata a fine turno del giocatore.
@@ -49,6 +59,7 @@ namespace Engine.Core
             {
                 ["OB-01"] = (s, g) => s.Giocatori[g].DanniAvversarioQuestoTurno > 0,
                 ["OB-07"] = (s, g) => Creature(s, g) > Creature(s, (g + 1) % s.Giocatori.Count),
+                ["OB-12"] = (s, g) => s.Giocatori[g].Mano.Count >= 6,
             };
 
         // Da chiamare a FINE turno del giocatore g (prima di passare): aggiorna il suo streak.

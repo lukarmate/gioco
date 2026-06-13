@@ -133,6 +133,7 @@ namespace Engine.Core
             {
                 Mano = mano, Campo = campo, Energia = g.Energia - costo,
                 CarteGiocateQuestoTurno = g.CarteGiocateQuestoTurno + 1,
+                EnergiaSpesaQuestoTurno = g.EnergiaSpesaQuestoTurno + costo,
             };
             var giocatori = stato.Giocatori.Select((gg, i) => i == att ? nuovo : gg).ToArray();
             var nuovoStato = stato with { Giocatori = giocatori };
@@ -167,6 +168,7 @@ namespace Engine.Core
             {
                 Mano = mano, Energia = g.Energia - costo,
                 CarteGiocateQuestoTurno = g.CarteGiocateQuestoTurno + 1,
+                EnergiaSpesaQuestoTurno = g.EnergiaSpesaQuestoTurno + costo,
             };
             var nuovoStato = stato with { Giocatori = stato.Giocatori.Select((gg, i) => i == att ? nuovo : gg).ToArray() };
             var eventi = new List<Evento> { new MagiaGiocata(att, iid) };
@@ -214,6 +216,7 @@ namespace Engine.Core
             {
                 Campo = g.Campo.Concat(new[] { inCampo }).ToList(),
                 Energia = g.Energia - costo,
+                EnergiaSpesaQuestoTurno = g.EnergiaSpesaQuestoTurno + costo,
                 Leader = g.Leader with { InCampo = true, Iid = iid },
             };
             var nuovoStato = stato with { Giocatori = stato.Giocatori.Select((gg, i) => i == att ? nuovo : gg).ToArray() };
@@ -241,6 +244,7 @@ namespace Engine.Core
             var nuovo = g with
             {
                 Energia = g.Energia - hp.Costo,
+                EnergiaSpesaQuestoTurno = g.EnergiaSpesaQuestoTurno + hp.Costo,
                 Leader = g.Leader with { CooldownHeroPower = hp.Cooldown },
             };
             var nuovoStato = stato with { Giocatori = stato.Giocatori.Select((gg, i) => i == att ? nuovo : gg).ToArray() };
@@ -312,9 +316,11 @@ namespace Engine.Core
 
             var eventi = new List<Evento> { new CreaturaAttacca(att, attaccanteIid) };
 
-            // Tappa l'attaccante, poi fa scattare il trigger "attacco".
+            // Tappa l'attaccante + conta l'attacco (obiettivi), poi fa scattare il trigger "attacco".
             stato = ConCampo(stato, att, campo =>
                 campo.Select(c => c.Iid == attaccanteIid ? c with { Tappata = true } : c).ToList());
+            stato = stato with { Giocatori = stato.Giocatori.Select((gg, i) =>
+                i == att ? gg with { AttacchiQuestoTurno = gg.AttacchiQuestoTurno + 1 } : gg).ToArray() };
             if (stato.Carte.TryGetValue(a.DefId, out DefCarta? defA))
             {
                 var rt = Effetti.EseguiTrigger(stato, defA, att, attaccanteIid, Trigger.Attacco);

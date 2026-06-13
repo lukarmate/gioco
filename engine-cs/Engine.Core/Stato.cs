@@ -72,6 +72,8 @@ namespace Engine.Core
         // Accumulatori per-turno (per gli obiettivi). Reset all'inizio del proprio turno.
         public int CarteGiocateQuestoTurno { get; init; }
         public int DanniAvversarioQuestoTurno { get; init; }
+        public int AttacchiQuestoTurno { get; init; }
+        public int EnergiaSpesaQuestoTurno { get; init; }
         // Streak: turni consecutivi in cui la condizione dell'obiettivo è soddisfatta a fine turno.
         public int StreakObiettivo { get; init; }
         // Leader (Zona di Comando). null nei test che non lo usano.

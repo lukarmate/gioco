@@ -27,7 +27,7 @@ Ordine di priorità:
 - ✅ **`infliggi_danno` a creatura:** accumula `CartaIstanza.Danno`; la morte la decide lo state-based globale.
 - ✅ **State-based death dopo ogni azione:** `MortiStateBased` gira in `Engine.Applica` dopo ogni azione (non più solo dopo `Attacca`).
 - ✅ **Modifica-stat persistente su creatura (segnalini):** `CartaIstanza.BonusAtk/BonusDef` + verbo `ApplicaStat` (one-shot, letto in `StatEffettive`). Il loader distingue per tipo: `modifica_stat`/`combo` su **Magia** → `ApplicaStat` (segnalino persistente), su **permanente** → `ModificaStat` (aura). `applica_stat`/`segnalino_stat` → `ApplicaStat`.
-- 🟡 **Resto pool obiettivi (22):** OB-09/10/11 (creature distrutte/turno), OB-16/17 (leader in campo), OB-19/20/21 (danno subito) → servono contatori nuovi. OB-04/06/08/12/15/22 ecc. *(prossimo)*
+- 🟡 **Pool obiettivi: 12/22 fatti.** Snapshot OB-02/05/06/14/19 · accumulatori OB-03/13/15/22 (contatori `AttacchiQuestoTurno`/`EnergiaSpesaQuestoTurno`) · streak OB-01/07/12. **Restano (servono tracking nuovo):** OB-09/10/11 (creature avversarie distrutte — serve kill-attribution), OB-16/17 (leader: danno-fatto/sopravvivenza), OB-20/21 (danno subito/sopravvivenza), OB-04 (attaccanti distinti/turno), OB-08 (creature DEF non danneggiata).
 - ✅ **Verbi con scelta (`quantificatore: una`):** `GiocaMagia(Iid, Bersaglio?)` porta l'iid scelto; resolver `CreatureBersagliate` gestisce "una" per infliggi_danno/distruggi/applica_stat/cura. (Etb/hero-power con scelta: `EseguiAzioni/EseguiTrigger` accettano `scelta` ma le azioni non-Magia non la passano ancora.)
 - ✅ **Assegnazione obiettivi/leader a inizio partita:** `IniziaPartita(..., Leader?, Obiettivi?)` per giocatore; Setup li assegna.
 - ✅ **Cura/heal:** verbo `Cura` (riduce `Danno`, min 0).
