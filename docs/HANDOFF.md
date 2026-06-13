@@ -129,9 +129,14 @@ Cartella `engine-cs/`, stesso stile (record immutabili, funzione pura). **55/55 
 - Tolti i check "solo nelle Main Phase" da GiocaCreatura/Avamposto e il check fase da Attacca/Scarta (si gioca liberamente nella propria fase Azioni). `Scarta` ora valido quando la mano supera il limite.
 - Test: riscritti `EngineTests`/`FasiTests`, adattati Replay/Setup/Untap + i combat/upkeep. Shim `E2.FinoAMain1` (dopo Avvia sei già in Azioni). Rimossi 2 test phase-negative obsoleti.
 
+### ✅ FATTO 2026-06-13: energia automatica — re-baseline slice 3
+**78/78 test verdi.** Sostituito il mana colorato + tagliati gli avamposti.
+- `Giocatore`: `Energia` (corrente) + `EnergiaMax`. Begin step (`Fasi.InizioTurno`) fa il tick: `EnergiaMax += 1` (cap `ConfigPartita.CapEnergia`, default 8), `Energia = EnergiaMax`. Setup: primo giocatore parte 1/1 (il suo begin step T1 è saltato), gli altri 0/0. Evento `EnergiaRicaricata`.
+- **GiocaCreatura** paga `def.Costo.Totale` dall'`Energia` (niente più pool/`Mana.Paga`). Verbo `genera_mana` → aggiunge **energia** (colore ignorato), evento `EnergiaGenerata`.
+- **Rimossi:** `ManaPool`, `Giocatore.ManaDisponibile`, `Mana.Paga`, azioni `GiocaAvamposto`/`AttivaAvamposto` (+ impl + test), `Giocatore.AvampostoGiocatoQuestoTurno`, eventi `ManaAzzerato`/`ManaGenerato`/`AvampostoGiocato`. **Tenuti** (parsing, non giocabili in v1): `ManaCosto` (per `.Totale`), `ManaProdotto`/`DefCarta.Produzione` + mapping avamposto nel loader.
+
 **Re-baseline v1 — prossimi slice (vedi `DESIGN_V1.md` §11 + `FEEDBACK...` §6):**
-- **Energia automatica** (+1/turno, cap 8, reset; costo = `ManaCosto.Totale`) al posto del mana colorato/Avamposti.
-- **Fatigue** (danno crescente a mazzo vuoto). **Cap board 6** + board-pieno.
+- **Fatigue** (danno crescente a mazzo vuoto, non perdita immediata). **Cap board 6** + board-pieno (token in eccesso fizzlano).
 - **Sistema Obiettivi** (pool, assegnazione, tracking, telegrafo 3-stati, win-check parallelo). **Leader**.
 
 ### 🟡 STORICO: Engine E4 (combattimento) — vecchio modello attacco/blocco (SOSTITUITO il 2026-06-13)

@@ -58,12 +58,14 @@ namespace Engine.Tests
                     new Effetto(Trigger.Etb, new AzioneEffetto[] { new GeneraMana(2, "Centro") })),
             };
             var (s, iid) = Pronto(carte, "FONTE");
+            int energiaPrima = s.Giocatori[0].Energia;
 
             var r = GameEngine.Applica(s, new GiocaCreatura(iid));
 
             Assert.True(r.Ok, r.Errore);
-            Assert.Equal(2, r.Stato!.Giocatori[0].ManaDisponibile.Centro);
-            Assert.Single(r.Eventi.OfType<ManaGenerato>());
+            // FONTE costa 0; l'etb genera 2 energia.
+            Assert.Equal(energiaPrima + 2, r.Stato!.Giocatori[0].Energia);
+            Assert.Single(r.Eventi.OfType<EnergiaGenerata>());
         }
 
         [Fact]
@@ -183,12 +185,13 @@ namespace Engine.Tests
             };
             var (s, iid) = Pronto(carte, "COMBO");
             int hpPrima = s.Giocatori[1].Hp;
+            int energiaPrima = s.Giocatori[0].Energia;
 
             var r = GameEngine.Applica(s, new GiocaCreatura(iid));
 
             Assert.True(r.Ok, r.Errore);
             Assert.Single(r.Eventi.OfType<CartaPescata>());
-            Assert.Equal(1, r.Stato!.Giocatori[0].ManaDisponibile.Est);
+            Assert.Equal(energiaPrima + 1, r.Stato!.Giocatori[0].Energia);
             Assert.Equal(hpPrima - 1, r.Stato.Giocatori[1].Hp);
         }
 

@@ -49,8 +49,9 @@ namespace Engine.Tests
             Assert.Equal(2, r.Stato.NumeroTurno);
             Assert.Equal(Fase.Azioni, r.Stato.Fase);
             Assert.Contains(r.Eventi, e => e is TurnoPassato);
-            Assert.Contains(r.Eventi, e => e is ManaAzzerato);
-            // il giocatore 1 (non primo) pesca nel suo begin step
+            Assert.Contains(r.Eventi, e => e is EnergiaRicaricata);
+            // il giocatore 1 (non primo) ha 1 energia ricaricata e pesca nel suo begin step
+            Assert.Equal(1, r.Stato.Giocatori[1].Energia);
             Assert.Equal(manoAvvPrima + 1, r.Stato.Giocatori[1].Mano.Count);
             Assert.Contains(r.Eventi, e => e is CartaPescata);
         }

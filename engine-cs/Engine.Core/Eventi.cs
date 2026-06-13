@@ -11,16 +11,16 @@ namespace Engine.Core
     public sealed record CartaStappata(string Iid) : Evento;
     public sealed record CartaPescata(int Giocatore, string Iid) : Evento;
     public sealed record MazzoVuoto(int Giocatore) : Evento;
-    public sealed record ManaAzzerato(int Giocatore) : Evento;
+    public sealed record EnergiaRicaricata(int Giocatore, int Energia) : Evento;
     public sealed record RichiestaScarto(int Giocatore, int Quantita) : Evento;
     public sealed record CartaScartata(int Giocatore, string Iid) : Evento;
     public sealed record TurnoPassato(int Da, int A) : Evento;
     public sealed record PartitaFinita(int? Vincitore, string Motivo) : Evento;
 
-    // E2 — gioco di permanenti + mana.
-    public sealed record AvampostoGiocato(int Giocatore, string Iid) : Evento;
-    public sealed record ManaGenerato(int Giocatore, string Iid, IReadOnlyDictionary<string, int> Mana) : Evento;
+    // E2 — gioco di permanenti.
     public sealed record CreaturaGiocata(int Giocatore, string Iid) : Evento;
+    // Energia generata da un effetto (verbo genera_mana → energia).
+    public sealed record EnergiaGenerata(int Giocatore, int Quantita) : Evento;
 
     // E3 — effetti.
     public sealed record CartaMacinata(int Giocatore, string Iid) : Evento;

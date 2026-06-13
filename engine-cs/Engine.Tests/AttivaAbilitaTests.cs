@@ -26,13 +26,14 @@ namespace Engine.Tests
             string iid;
             (s, iid) = E2.MettiInCampo(s, 0, "FONTE");
 
+            int energiaPrima = s.Giocatori[0].Energia;
             var r = GameEngine.Applica(s, new AttivaAbilita(iid));
 
             Assert.True(r.Ok, r.Errore);
-            Assert.Equal(1, r.Stato!.Giocatori[0].ManaDisponibile.Centro);
+            Assert.Equal(energiaPrima + 1, r.Stato!.Giocatori[0].Energia);
             CartaIstanza carta = r.Stato.Giocatori[0].Campo.First(c => c.Iid == iid);
             Assert.True(carta.Tappata);
-            Assert.Single(r.Eventi.OfType<ManaGenerato>());
+            Assert.Single(r.Eventi.OfType<EnergiaGenerata>());
         }
 
         [Fact]

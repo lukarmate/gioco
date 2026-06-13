@@ -40,7 +40,10 @@ namespace Engine.Core
                     Campo = new List<CartaIstanza>(),
                     Cimitero = new List<CartaIstanza>(),
                     Esilio = new List<CartaIstanza>(),
-                    ManaDisponibile = ManaPool.Vuoto(),
+                    // Il primo giocatore inizia con 1 energia (il suo begin step T1 è saltato);
+                    // gli altri partono da 0 e ticcano al loro primo turno.
+                    Energia = id == 0 ? 1 : 0,
+                    EnergiaMax = id == 0 ? 1 : 0,
                     Morti = 0,
                 });
             }

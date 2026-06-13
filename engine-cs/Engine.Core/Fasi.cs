@@ -9,14 +9,27 @@ namespace Engine.Core
     {
         public sealed record RisultatoFase(StatoPartita Stato, IReadOnlyList<Evento> Eventi);
 
-        // Begin step automatico: untap, upkeep, pesca. Lascia il giocatore attivo in fase Azioni.
+        // Begin step automatico: energia, untap, upkeep, pesca. Lascia il giocatore in fase Azioni.
         public static RisultatoFase InizioTurno(StatoPartita stato)
         {
             var eventi = new List<Evento>();
+            stato = Energia(stato, eventi).Stato;
             stato = Untap(stato, eventi).Stato;
             stato = Upkeep(stato, eventi).Stato;
             stato = Pesca(stato, eventi).Stato;
             return new RisultatoFase(stato, eventi);
+        }
+
+        // v1: a inizio turno EnergiaMax += 1 (fino al cap), Energia ricaricata a EnergiaMax.
+        private static RisultatoFase Energia(StatoPartita stato, List<Evento> eventi)
+        {
+            int att = stato.TurnoDi;
+            Giocatore g = stato.Giocatori[att];
+            int cap = stato.Config.CapEnergia > 0 ? stato.Config.CapEnergia : 8;
+            int max = System.Math.Min(cap, g.EnergiaMax + 1);
+            var nuovo = g with { EnergiaMax = max, Energia = max };
+            eventi.Add(new EnergiaRicaricata(att, max));
+            return new RisultatoFase(stato with { Giocatori = SostituisciGiocatore(stato, att, nuovo) }, eventi);
         }
 
         // Wrapper pubblici single-arg (comodi per i test).
@@ -56,8 +69,7 @@ namespace Engine.Core
                 return c.Tappata ? c with { Tappata = false } : c;
             }).ToList();
 
-            // Nuovo turno del giocatore: può rigiocare un avamposto.
-            var nuovo = g with { Campo = campo, Mazzo = mazzo, AvampostoGiocatoQuestoTurno = false };
+            var nuovo = g with { Campo = campo, Mazzo = mazzo };
             var giocatori = SostituisciGiocatore(stato, att, nuovo);
             return new RisultatoFase(stato with { Giocatori = giocatori }, eventi);
         }

@@ -15,18 +15,8 @@ namespace Engine.Core
         public bool PrimoNonPescaT1 { get; init; }
         public PenalitaMazzoVuoto PenalitaMazzoVuoto { get; init; }
         public int? DannoMazzoVuoto { get; init; } // usato se penalita = DannoPerTurno
-    }
-
-    public sealed record ManaPool
-    {
-        public int Nord { get; init; }
-        public int Sud { get; init; }
-        public int Est { get; init; }
-        public int Ovest { get; init; }
-        public int Centro { get; init; }
-        public int Generico { get; init; }
-
-        public static ManaPool Vuoto() => new ManaPool();
+        // v1: cap dell'energia massima (DESIGN_V1 = 8). 0 => default 8.
+        public int CapEnergia { get; init; }
     }
 
     public sealed record CartaIstanza
@@ -52,10 +42,11 @@ namespace Engine.Core
         public IReadOnlyList<CartaIstanza> Campo { get; init; } = new List<CartaIstanza>();
         public IReadOnlyList<CartaIstanza> Cimitero { get; init; } = new List<CartaIstanza>();
         public IReadOnlyList<CartaIstanza> Esilio { get; init; } = new List<CartaIstanza>();
-        public ManaPool ManaDisponibile { get; init; } = ManaPool.Vuoto();
+        // v1: energia automatica. EnergiaMax cresce di 1 a turno (cap config); Energia = corrente
+        // disponibile, ricaricata a EnergiaMax all'inizio del proprio turno.
+        public int Energia { get; init; }
+        public int EnergiaMax { get; init; }
         public int Morti { get; init; }
-        // Regola: 1 avamposto giocabile per turno. Azzerato nell'untap del proprietario.
-        public bool AvampostoGiocatoQuestoTurno { get; init; }
     }
 
     public sealed record StatoPartita

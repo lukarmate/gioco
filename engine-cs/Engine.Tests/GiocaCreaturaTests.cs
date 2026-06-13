@@ -18,7 +18,7 @@ namespace Engine.Tests
         private static StatoPartita Main1ConMana(int est = 1)
         {
             var s = E2.FinoAMain1(E2.Avvia(Carte()));
-            return H.ConGiocatore(s, 0, g => g with { ManaDisponibile = new ManaPool { Est = est } });
+            return H.ConGiocatore(s, 0, g => g with { Energia = est });
         }
 
         [Fact]
@@ -29,7 +29,7 @@ namespace Engine.Tests
             Assert.True(r.Ok, r.Errore);
             Assert.Contains(r.Stato!.Giocatori[0].Campo, c => c.Iid == iid);
             Assert.DoesNotContain(r.Stato.Giocatori[0].Mano, c => c.Iid == iid);
-            Assert.Equal(0, r.Stato.Giocatori[0].ManaDisponibile.Est);
+            Assert.Equal(0, r.Stato.Giocatori[0].Energia); // pagato 1 energia (1 -> 0)
             Assert.True(r.Stato.Giocatori[0].Campo.First(c => c.Iid == iid).EntrataQuestoTurno);
             Assert.Contains(r.Eventi, e => e is CreaturaGiocata);
         }

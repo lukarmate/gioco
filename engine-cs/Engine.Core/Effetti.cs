@@ -63,7 +63,7 @@ namespace Engine.Core
             switch (az)
             {
                 case Pesca p: return EseguiPesca(stato, ctrl, p.Valore, ev);
-                case GeneraMana g: return EseguiGeneraMana(stato, ctrl, iid, g.Valore, g.Colore, ev);
+                case GeneraMana g: return EseguiGeneraMana(stato, ctrl, g.Valore, ev);
                 case InfliggiDanno d: return EseguiInfliggiDanno(stato, ctrl, d.Bersaglio, d.Valore, ev);
                 case Distruggi ds: return EseguiDistruggi(stato, ctrl, ds.Bersaglio, ev);
                 case Mill m: return EseguiMill(stato, ctrl, m.Bersaglio, m.Valore, ev);
@@ -175,13 +175,12 @@ namespace Engine.Core
             return stato with { Giocatori = Sostituisci(stato, ctrl, g with { Mazzo = mazzo, Mano = mano }) };
         }
 
-        private static StatoPartita EseguiGeneraMana(
-            StatoPartita stato, int ctrl, string iid, int n, string colore, List<Evento> ev)
+        // v1: il verbo genera_mana produce ENERGIA (colorless). Il colore nel dato è ignorato.
+        private static StatoPartita EseguiGeneraMana(StatoPartita stato, int ctrl, int n, List<Evento> ev)
         {
             Giocatore g = stato.Giocatori[ctrl];
-            ManaPool pool = AggiungiMana(g.ManaDisponibile, colore, n);
-            ev.Add(new ManaGenerato(ctrl, iid, new Dictionary<string, int> { [colore] = n }));
-            return stato with { Giocatori = Sostituisci(stato, ctrl, g with { ManaDisponibile = pool }) };
+            ev.Add(new EnergiaGenerata(ctrl, n));
+            return stato with { Giocatori = Sostituisci(stato, ctrl, g with { Energia = g.Energia + n }) };
         }
 
         private static StatoPartita EseguiInfliggiDanno(
@@ -303,19 +302,6 @@ namespace Engine.Core
             var campo = g.Campo.Concat(new[] { token }).ToList();
             ev.Add(new TokenGenerato(dest, iid, t.Nome));
             return stato with { Giocatori = Sostituisci(stato, dest, g with { Campo = campo }) };
-        }
-
-        private static ManaPool AggiungiMana(ManaPool p, string colore, int q)
-        {
-            switch (colore.ToLowerInvariant())
-            {
-                case "nord": return p with { Nord = p.Nord + q };
-                case "sud": return p with { Sud = p.Sud + q };
-                case "est": return p with { Est = p.Est + q };
-                case "ovest": return p with { Ovest = p.Ovest + q };
-                case "centro": return p with { Centro = p.Centro + q };
-                default: return p with { Generico = p.Generico + q };
-            }
         }
     }
 }

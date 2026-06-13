@@ -55,41 +55,7 @@ namespace Engine.Core
         }
     }
 
-    public static class Mana
-    {
-        // Tenta di pagare un costo da un pool. Ritorna il pool aggiornato, o null se insufficiente.
-        // Colorato: speso dal colore esatto. Generico: speso da qualsiasi colore residuo.
-        public static ManaPool? Paga(ManaPool pool, ManaCosto costo)
-        {
-            int nord = pool.Nord, sud = pool.Sud, est = pool.Est,
-                ovest = pool.Ovest, centro = pool.Centro, generico = pool.Generico;
-
-            if (nord < costo.Nord || sud < costo.Sud || est < costo.Est ||
-                ovest < costo.Ovest || centro < costo.Centro)
-                return null;
-
-            nord -= costo.Nord; sud -= costo.Sud; est -= costo.Est;
-            ovest -= costo.Ovest; centro -= costo.Centro;
-
-            int restanti = nord + sud + est + ovest + centro + generico;
-            if (restanti < costo.Generico) return null;
-
-            int daPagare = costo.Generico;
-            // Ordine deterministico: prima il pool generico, poi i colori.
-            void Scala(ref int canale)
-            {
-                if (daPagare <= 0) return;
-                int spesa = canale < daPagare ? canale : daPagare;
-                canale -= spesa;
-                daPagare -= spesa;
-            }
-            Scala(ref generico);
-            Scala(ref nord); Scala(ref sud); Scala(ref est); Scala(ref ovest); Scala(ref centro);
-
-            return new ManaPool
-            {
-                Nord = nord, Sud = sud, Est = est, Ovest = ovest, Centro = centro, Generico = generico,
-            };
-        }
-    }
+    // v1: il pagamento dei costi usa l'ENERGIA (intero), non un pool colorato.
+    // Il costo di una carta = ManaCosto.Totale. La classe Mana.Paga (pool colorato) è stata
+    // rimossa col passaggio all'energia automatica; ManaCosto/ManaProdotto restano per il parsing.
 }

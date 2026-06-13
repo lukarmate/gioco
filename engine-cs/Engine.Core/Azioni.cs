@@ -33,13 +33,7 @@ namespace Engine.Core
 
     public sealed record Scarta(IReadOnlyList<string> Iids) : Azione;
 
-    // E2 — gioco di permanenti + mana.
-    public sealed record GiocaAvamposto(string Iid) : Azione;
-
-    // Tappa un avamposto per produrre mana. Scelte = colore scelto per ogni unità di mana
-    // (usato solo quando l'avamposto ha Produzione.Scelta == true).
-    public sealed record AttivaAvamposto(string Iid, IReadOnlyList<string>? Scelte = null) : Azione;
-
+    // E2 — gioco di permanenti.
     public sealed record GiocaCreatura(string Iid) : Azione;
 
     // E3 — attiva l'abilità (trigger "attivata") di un permanente proprio in campo.

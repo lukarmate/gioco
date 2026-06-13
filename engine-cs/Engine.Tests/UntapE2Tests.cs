@@ -24,14 +24,5 @@ namespace Engine.Tests
             var r = Fasi.Untap(s);
             Assert.False(r.Stato.Giocatori[0].Campo.First(c => c.Iid == "x").EntrataQuestoTurno);
         }
-
-        [Fact]
-        public void UntapResettaFlagAvampostoGiocato()
-        {
-            var s = E2.Avvia(Carte());
-            s = H.ConGiocatore(s, 0, g => g with { AvampostoGiocatoQuestoTurno = true });
-            var r = Fasi.Untap(s);
-            Assert.False(r.Stato.Giocatori[0].AvampostoGiocatoQuestoTurno);
-        }
     }
 }

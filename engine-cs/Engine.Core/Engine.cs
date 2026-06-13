@@ -40,10 +40,6 @@ namespace Engine.Core
                     return PassaTurnoImpl(stato);
                 case Scarta scarta:
                     return ScartaImpl(stato, scarta.Iids);
-                case GiocaAvamposto ga:
-                    return GiocaAvampostoImpl(stato, ga.Iid);
-                case AttivaAvamposto aa:
-                    return AttivaAvampostoImpl(stato, aa.Iid, aa.Scelte);
                 case GiocaCreatura gc:
                     return GiocaCreaturaImpl(stato, gc.Iid);
                 case AttivaAbilita ab:
@@ -71,13 +67,8 @@ namespace Engine.Core
             int n = stato.Giocatori.Count;
             int prossimo = (att + 1) % n;
 
-            var giocatori = stato.Giocatori
-                .Select((g, i) => i == att ? g with { ManaDisponibile = ManaPool.Vuoto() } : g)
-                .ToArray();
-
             var statoPassato = stato with
             {
-                Giocatori = giocatori,
                 TurnoDi = prossimo,
                 NumeroTurno = stato.NumeroTurno + 1,
                 Fase = Fase.Azioni,
@@ -85,7 +76,6 @@ namespace Engine.Core
 
             var eventi = new List<Evento>
             {
-                new ManaAzzerato(att),
                 new TurnoPassato(att, prossimo),
                 new TurnoIniziato(prossimo, statoPassato.NumeroTurno),
             };
@@ -93,27 +83,6 @@ namespace Engine.Core
             var r = Fasi.InizioTurno(statoPassato);
             eventi.AddRange(r.Eventi);
             return Risultato.Successo(r.Stato, eventi);
-        }
-
-        private static Risultato GiocaAvampostoImpl(StatoPartita stato, string iid)
-        {
-            int att = stato.TurnoDi;
-            Giocatore g = stato.Giocatori[att];
-            if (g.AvampostoGiocatoQuestoTurno)
-                return Risultato.Fallito("hai già giocato un avamposto questo turno");
-
-            CartaIstanza? carta = g.Mano.FirstOrDefault(c => c.Iid == iid);
-            if (carta is null) return Risultato.Fallito("carta non in mano");
-
-            if (!stato.Carte.TryGetValue(carta.DefId, out DefCarta? def) || def.Produzione is null)
-                return Risultato.Fallito("la carta non è un avamposto");
-
-            var mano = g.Mano.Where(c => c.Iid != iid).ToList();
-            var campo = g.Campo.Concat(new[] { carta }).ToList();
-            var nuovo = g with { Mano = mano, Campo = campo, AvampostoGiocatoQuestoTurno = true };
-            var giocatori = stato.Giocatori.Select((gg, i) => i == att ? nuovo : gg).ToArray();
-            var eventi = new List<Evento> { new AvampostoGiocato(att, iid) };
-            return Risultato.Successo(stato with { Giocatori = giocatori }, eventi);
         }
 
         private static Risultato GiocaCreaturaImpl(StatoPartita stato, string iid)
@@ -128,14 +97,13 @@ namespace Engine.Core
             if (def.Tipo.IndexOf("Creatura", System.StringComparison.OrdinalIgnoreCase) < 0)
                 return Risultato.Fallito("la carta non è una creatura");
 
-            ManaCosto costo = def.Costo ?? new ManaCosto();
-            ManaPool? pool = Mana.Paga(g.ManaDisponibile, costo);
-            if (pool is null) return Risultato.Fallito("mana insufficiente");
+            int costo = def.Costo?.Totale ?? 0;
+            if (g.Energia < costo) return Risultato.Fallito("energia insufficiente");
 
             var mano = g.Mano.Where(c => c.Iid != iid).ToList();
             var inCampo = carta with { EntrataQuestoTurno = true };
             var campo = g.Campo.Concat(new[] { inCampo }).ToList();
-            var nuovo = g with { Mano = mano, Campo = campo, ManaDisponibile = pool };
+            var nuovo = g with { Mano = mano, Campo = campo, Energia = g.Energia - costo };
             var giocatori = stato.Giocatori.Select((gg, i) => i == att ? nuovo : gg).ToArray();
             var nuovoStato = stato with { Giocatori = giocatori };
             var eventi = new List<Evento> { new CreaturaGiocata(att, iid) };
@@ -309,57 +277,6 @@ namespace Engine.Core
             return Effetti.EseguiMorti(stato, mortiInfo, ev);
         }
 
-        private static ManaPool AggiungiMana(ManaPool p, string colore, int q)
-        {
-            switch (colore.ToLowerInvariant())
-            {
-                case "nord": return p with { Nord = p.Nord + q };
-                case "sud": return p with { Sud = p.Sud + q };
-                case "est": return p with { Est = p.Est + q };
-                case "ovest": return p with { Ovest = p.Ovest + q };
-                case "centro": return p with { Centro = p.Centro + q };
-                default: return p with { Generico = p.Generico + q };
-            }
-        }
-
-        private static Risultato AttivaAvampostoImpl(StatoPartita stato, string iid, IReadOnlyList<string>? scelte)
-        {
-            int att = stato.TurnoDi;
-            Giocatore g = stato.Giocatori[att];
-            CartaIstanza? carta = g.Campo.FirstOrDefault(c => c.Iid == iid);
-            if (carta is null) return Risultato.Fallito("avamposto non in campo");
-            if (carta.Tappata) return Risultato.Fallito("avamposto già tappato");
-
-            if (!stato.Carte.TryGetValue(carta.DefId, out DefCarta? def) || def.Produzione is null)
-                return Risultato.Fallito("la carta non è un avamposto");
-            ManaProdotto prod = def.Produzione;
-
-            // Calcola il mana prodotto come dizionario colore -> quantità.
-            var prodotto = new Dictionary<string, int>();
-            void Somma(string col, int q) => prodotto[col] = prodotto.TryGetValue(col, out int v) ? v + q : q;
-
-            if (prod.Scelta)
-            {
-                if (scelte is null || scelte.Count != prod.Quantita)
-                    return Risultato.Fallito($"devi scegliere esattamente {prod.Quantita} colori");
-                if (!scelte.All(c => prod.Colori.Contains(c)))
-                    return Risultato.Fallito("colore scelto non prodotto da questo avamposto");
-                foreach (string c in scelte) Somma(c, 1);
-            }
-            else
-            {
-                foreach (string c in prod.Colori) Somma(c, prod.Quantita);
-            }
-
-            ManaPool pool = g.ManaDisponibile;
-            foreach (var kv in prodotto) pool = AggiungiMana(pool, kv.Key, kv.Value);
-
-            var campo = g.Campo.Select(c => c.Iid == iid ? c with { Tappata = true } : c).ToList();
-            var nuovo = g with { Campo = campo, ManaDisponibile = pool };
-            var giocatori = stato.Giocatori.Select((gg, i) => i == att ? nuovo : gg).ToArray();
-            var eventi = new List<Evento> { new ManaGenerato(att, iid, prodotto) };
-            return Risultato.Successo(stato with { Giocatori = giocatori }, eventi);
-        }
 
         private static Risultato ScartaImpl(StatoPartita stato, IReadOnlyList<string> iids)
         {

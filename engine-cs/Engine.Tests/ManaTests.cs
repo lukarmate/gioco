@@ -3,6 +3,8 @@ using Xunit;
 
 namespace Engine.Tests
 {
+    // v1: il pool colorato (Mana.Paga) è stato rimosso (energia automatica). Restano i test
+    // del parsing del costo, perché il costo = ManaCosto.Totale (energia richiesta).
     public class ManaTests
     {
         [Fact]
@@ -31,40 +33,6 @@ namespace Engine.Tests
         public void CostoTotaleSommaTutto()
         {
             Assert.Equal(3, new ManaCosto { Est = 2, Generico = 1 }.Totale);
-        }
-
-        [Fact]
-        public void PagaColoratoEsatto()
-        {
-            var pool = new ManaPool { Est = 2, Centro = 1 };
-            var ok = Mana.Paga(pool, new ManaCosto { Est = 2 });
-            Assert.NotNull(ok);
-            Assert.Equal(0, ok!.Est);
-            Assert.Equal(1, ok.Centro);
-        }
-
-        [Fact]
-        public void PagaGenericoDaQualsiasiColore()
-        {
-            var pool = new ManaPool { Est = 2, Centro = 1 };
-            // costo: 1 Est + 1 generico => generico pagato dal Centro (o dall'Est avanzato)
-            var ok = Mana.Paga(pool, new ManaCosto { Est = 1, Generico = 1 });
-            Assert.NotNull(ok);
-            Assert.Equal(1, ok!.Est + ok.Centro); // restano 1 mana totale (3 spesi 2)
-        }
-
-        [Fact]
-        public void NonPagaSeColoreInsufficiente()
-        {
-            var pool = new ManaPool { Est = 1 };
-            Assert.Null(Mana.Paga(pool, new ManaCosto { Est = 2 }));
-        }
-
-        [Fact]
-        public void NonPagaSeGenericoInsufficiente()
-        {
-            var pool = new ManaPool { Est = 1 };
-            Assert.Null(Mana.Paga(pool, new ManaCosto { Est = 1, Generico = 1 }));
         }
     }
 }
