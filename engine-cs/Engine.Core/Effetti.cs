@@ -35,6 +35,8 @@ namespace Engine.Core
     // Effetti STATICI (trigger Passiva): non mutano lo stato, sono letti da StatEffettive/KeywordEffettive.
     public sealed record ModificaStat(Bersaglio Bersaglio, int Atk, int Def) : AzioneEffetto;
     public sealed record ConcediKeyword(Bersaglio Bersaglio, string Keyword) : AzioneEffetto;
+    // One-shot: applica un segnalino +X/+X PERSISTENTE alle creature bersaglio.
+    public sealed record ApplicaStat(Bersaglio Bersaglio, int Atk, int Def) : AzioneEffetto;
 
     public sealed record Effetto(Trigger Trigger, IReadOnlyList<AzioneEffetto> Azioni);
 
@@ -81,6 +83,7 @@ namespace Engine.Core
                 case Distruggi ds: return EseguiDistruggi(stato, ctrl, ds.Bersaglio, ev);
                 case Mill m: return EseguiMill(stato, ctrl, m.Bersaglio, m.Valore, ev);
                 case GeneraToken t: return EseguiGeneraToken(stato, ctrl, iid, t, ev);
+                case ApplicaStat ap: return EseguiApplicaStat(stato, ctrl, ap, ev);
                 default: return stato;
             }
         }
@@ -91,8 +94,8 @@ namespace Engine.Core
         public static (int Atk, int Def) StatEffettive(StatoPartita stato, CartaIstanza carta)
         {
             if (!stato.Carte.TryGetValue(carta.DefId, out DefCarta? def)) return (0, 0);
-            int atk = def.Atk ?? 0;
-            int def2 = def.Def ?? 0;
+            int atk = (def.Atk ?? 0) + carta.BonusAtk;   // base + segnalini persistenti
+            int def2 = (def.Def ?? 0) + carta.BonusDef;
             foreach (var (srcCtrl, az) in PassiveAzioni(stato))
             {
                 if (az is ModificaStat ms && Bersagliata(carta, srcCtrl, ms.Bersaglio))
@@ -312,6 +315,23 @@ namespace Engine.Core
                 {
                     Giocatori = Sostituisci(stato, idx, g with { Mazzo = mazzo, Cimitero = cimitero }),
                 };
+            }
+            return stato;
+        }
+
+        // One-shot: aggiunge segnalini +X/+X persistenti alle creature bersaglio (deterministico).
+        private static StatoPartita EseguiApplicaStat(
+            StatoPartita stato, int ctrl, ApplicaStat ap, List<Evento> ev)
+        {
+            if (ap.Bersaglio.Quantificatore == Quantificatore.Una) return stato; // scelta -> 🟡
+            foreach (int idx in RisolviGiocatori(stato, ctrl, ap.Bersaglio.Proprietario).ToList())
+            {
+                Giocatore g = stato.Giocatori[idx];
+                var campo = g.Campo.Select(c =>
+                    ECreatura(stato, c)
+                        ? c with { BonusAtk = c.BonusAtk + ap.Atk, BonusDef = c.BonusDef + ap.Def }
+                        : c).ToList();
+                stato = stato with { Giocatori = Sostituisci(stato, idx, g with { Campo = campo }) };
             }
             return stato;
         }

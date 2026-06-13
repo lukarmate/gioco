@@ -122,49 +122,59 @@ namespace Engine.Tests
         }
 
         [Fact]
-        public void ModificaStat_mappato()
+        public void ModificaStat_suPermanente_eAura()
         {
+            // Su un permanente (Artefatto) modifica_stat = aura continua (ModificaStat).
             string json = """
-            [ { "id": "X", "tipo": "Magia", "effetti": [
+            [ { "id": "X", "tipo": "Artefatto", "effetti": [
                 { "trigger": "passiva", "azioni": [
                     { "verbo": "modifica_stat", "stat": "ATK", "valore": 1,
                       "target": { "tipo": "creatura", "proprietario": "TUTTI", "quantificatore": "tutte" } } ] } ] } ]
             """;
             var m = CarteDb.CaricaCarte(json);
             var az = Assert.IsType<ModificaStat>(m["X"].Effetti!.Single().Azioni.Single());
-            Assert.Equal(1, az.Atk);
-            Assert.Equal(0, az.Def);
+            Assert.Equal((1, 0), (az.Atk, az.Def));
         }
 
         [Fact]
-        public void ModificaStatCombo_eConcediKeyword_mappati()
+        public void ModificaStat_suMagia_eOneShotPersistente()
         {
+            // Su una Magia modifica_stat_combo = segnalino one-shot (ApplicaStat).
             string json = """
-            [ { "id": "Y", "tipo": "Magia", "effetti": [
+            [ { "id": "Y", "tipo": "Magia — Istante", "effetti": [
                 { "trigger": "passiva", "azioni": [
                     { "verbo": "modifica_stat_combo", "atk": -1, "def": -1,
-                      "target": { "tipo": "creatura", "proprietario": "AVVERSARIO", "quantificatore": "tutte" } },
+                      "target": { "tipo": "creatura", "proprietario": "AVVERSARIO", "quantificatore": "tutte" } } ] } ] } ]
+            """;
+            var m = CarteDb.CaricaCarte(json);
+            var ap = Assert.IsType<ApplicaStat>(m["Y"].Effetti!.Single().Azioni.Single());
+            Assert.Equal((-1, -1), (ap.Atk, ap.Def));
+        }
+
+        [Fact]
+        public void ConcediKeyword_mappato()
+        {
+            string json = """
+            [ { "id": "Z", "tipo": "Artefatto", "effetti": [
+                { "trigger": "passiva", "azioni": [
                     { "verbo": "concedi_keyword", "keyword": "arcano",
                       "target": { "tipo": "creatura", "proprietario": "TUE" } } ] } ] } ]
             """;
             var m = CarteDb.CaricaCarte(json);
-            var azioni = m["Y"].Effetti!.Single().Azioni;
-            var combo = Assert.IsType<ModificaStat>(azioni[0]);
-            Assert.Equal((-1, -1), (combo.Atk, combo.Def));
-            var kw = Assert.IsType<ConcediKeyword>(azioni[1]);
+            var kw = Assert.IsType<ConcediKeyword>(m["Z"].Effetti!.Single().Azioni.Single());
             Assert.Equal("arcano", kw.Keyword);
         }
 
         [Fact]
         public void VerboNonSupportato_scartato()
         {
-            // segnalino_stat non è ancora interpretabile -> azione scartata.
+            // verbo non riconosciuto -> azione scartata, effetto omesso.
             string json = """
-            [ { "id": "Z", "tipo": "Magia", "effetti": [
-                { "trigger": "passiva", "azioni": [ { "verbo": "segnalino_stat", "atk": 1, "def": 1 } ] } ] } ]
+            [ { "id": "W", "tipo": "Magia", "effetti": [
+                { "trigger": "passiva", "azioni": [ { "verbo": "verbo_inventato", "valore": 1 } ] } ] } ]
             """;
             var m = CarteDb.CaricaCarte(json);
-            Assert.Null(m["Z"].Effetti);
+            Assert.Null(m["W"].Effetti);
         }
 
         // Smoke sul dataset reale: carica dist-motore/carte.json e verifica che il

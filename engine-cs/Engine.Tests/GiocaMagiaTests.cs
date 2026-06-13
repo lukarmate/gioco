@@ -65,6 +65,36 @@ namespace Engine.Tests
         }
 
         [Fact]
+        public void GiocaMagia_buffPersistente_restaDopoIlCimitero()
+        {
+            var carte = new Dictionary<string, DefCarta>
+            {
+                ["FORZA"] = new DefCarta("FORZA", "Magia — Sorcery",
+                    Effetti: new List<Effetto>
+                    {
+                        new Effetto(Trigger.Etb, new AzioneEffetto[]
+                        {
+                            new ApplicaStat(new Bersaglio("creatura", Proprietario.Tue, Quantificatore.Tutte), 2, 2),
+                        }),
+                    }),
+                ["SOLD"] = new DefCarta("SOLD", "Creatura", Atk: 2, Def: 2),
+            };
+            var s = E2.Avvia(carte);
+            s = H.ConGiocatore(s, 0, g => g with { Energia = 5 });
+            string sid;
+            (s, sid) = E2.MettiInCampo(s, 0, "SOLD"); // 2/2
+            string mid;
+            (s, mid) = E2.MettiInMano(s, 0, "FORZA");
+
+            var r = GameEngine.Applica(s, new GiocaMagia(mid));
+
+            Assert.True(r.Ok, r.Errore);
+            var c = r.Stato!.Giocatori[0].Campo.First(x => x.Iid == sid);
+            Assert.Equal((4, 4), Effetti.StatEffettive(r.Stato, c)); // 2/2 + segnalino 2/2 persistente
+            Assert.Contains(r.Stato.Giocatori[0].Cimitero, x => x.Iid == mid); // la magia è al cimitero
+        }
+
+        [Fact]
         public void GiocaMagia_suCreatura_fallisce()
         {
             var (s, _) = Pronto();

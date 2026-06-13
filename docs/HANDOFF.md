@@ -18,7 +18,7 @@
 - ✅ **Obiettivi segreti** (meccanica-firma): tutti e 3 i meccanismi (snapshot/accumulatore/streak) + 7 obiettivi (OB-01/02/03/05/07/13/14). Aggiungere il resto del pool §3 = solo nuove voci nel registry (meccanico)
 - ✅ **Leader**: gioca dalla Zona Comando (costo base + incremento/morte) · morte→ritorno in Zona Comando · **Hero Power** (`AttivaHeroPower`, costo energia + cooldown, da Zona Comando o campo) · **passiva** attiva anche dalla Zona Comando.
 
-**→ ✅ CORE ENGINE v1 (108 test verdi) — 3 tipi carta completi (Creatura/Magia/Leader).** Prossimo dopo le rifiniture sotto: **VISTA Unity giocabile**.
+**→ ✅ CORE ENGINE v1 (114 test verdi) — 3 tipi carta + tutte le rifiniture 🟠 fatte.** Restano solo 🟡/⚪ (sotto). Prossimo: **VISTA Unity giocabile**.
 
 ### 🔧 DA RIFINIRE / DA FARE (engine v1)
 Ordine di priorità:
@@ -26,7 +26,7 @@ Ordine di priorità:
 - ✅ **Loader buff:** `CarteDb` ora mappa `modifica_stat`/`modifica_stat_combo`/`concedi_keyword` → AST (le passive continue delle carte vere funzionano). Restano `applica_stat`/`segnalino_stat` (scartati, vedi sotto).
 - ✅ **`infliggi_danno` a creatura:** accumula `CartaIstanza.Danno`; la morte la decide lo state-based globale.
 - ✅ **State-based death dopo ogni azione:** `MortiStateBased` gira in `Engine.Applica` dopo ogni azione (non più solo dopo `Attacca`).
-- 🟠 **Modifica-stat persistente su creatura (segnalini):** serve per le magie/effetti one-shot che buffano/debuffano (es. magia −2/−2 a una creatura). Oggi `ModificaStat` è solo aura continua (sorgente in campo). Serve un modello di modificatori persistenti su `CartaIstanza`.
+- ✅ **Modifica-stat persistente su creatura (segnalini):** `CartaIstanza.BonusAtk/BonusDef` + verbo `ApplicaStat` (one-shot, letto in `StatEffettive`). Il loader distingue per tipo: `modifica_stat`/`combo` su **Magia** → `ApplicaStat` (segnalino persistente), su **permanente** → `ModificaStat` (aura). `applica_stat`/`segnalino_stat` → `ApplicaStat`.
 - 🟡 **Resto pool obiettivi (22):** OB-09/10/11 (creature distrutte/turno), OB-16/17 (leader in campo), OB-19/20/21 (danno subito) → servono contatori nuovi. OB-04/06/08/12/15/22 ecc.
 - 🟡 **Verbi con scelta (`quantificatore: una`):** targeting input (per distruggi/danno/buff a bersaglio singolo).
 - 🟡 **Assegnazione obiettivi/leader a inizio partita:** `IniziaPartita` non li imposta (li legge solo) → helper engine o app-layer.

@@ -35,7 +35,7 @@ namespace Engine.Data
                 if (v.TryGetProperty("effetti", out JsonElement effEl) && effEl.ValueKind == JsonValueKind.Array)
                 {
                     foreach (JsonElement e in effEl.EnumerateArray())
-                        LeggiEffetto(e, effetti, ref produzione);
+                        LeggiEffetto(e, effetti, ref produzione, tipo);
                 }
 
                 m[id!] = new DefCarta(
@@ -47,7 +47,7 @@ namespace Engine.Data
             return m;
         }
 
-        private static void LeggiEffetto(JsonElement e, List<Effetto> effetti, ref ManaProdotto? produzione)
+        private static void LeggiEffetto(JsonElement e, List<Effetto> effetti, ref ManaProdotto? produzione, string tipo)
         {
             if (!TryTrigger(StrOpt(e, "trigger"), out Trigger trigger)) return;
             if (!e.TryGetProperty("azioni", out JsonElement azEl) || azEl.ValueKind != JsonValueKind.Array) return;
@@ -61,7 +61,7 @@ namespace Engine.Data
                     produzione = LeggiProduzione(a) ?? produzione;
                     continue; // la produzione non è un effetto residuo
                 }
-                AzioneEffetto? az = LeggiAzione(verbo, a);
+                AzioneEffetto? az = LeggiAzione(verbo, a, tipo);
                 if (az != null) azioni.Add(az); // verbi non supportati (E3c) -> scartati
             }
 
@@ -69,8 +69,11 @@ namespace Engine.Data
         }
 
         // Verbi supportati dall'executor E3a. Gli altri tornano null (scartati).
-        private static AzioneEffetto? LeggiAzione(string? verbo, JsonElement a)
+        private static AzioneEffetto? LeggiAzione(string? verbo, JsonElement a, string tipo)
         {
+            // Su una Magia (carta non-permanente) i verbi stat sono ONE-SHOT persistenti (segnalini),
+            // non aure continue: la magia va al cimitero, ma il bonus resta sulla creatura.
+            bool eMagia = tipo.IndexOf("Magia", System.StringComparison.OrdinalIgnoreCase) >= 0;
             switch (verbo)
             {
                 case "pesca":
@@ -91,11 +94,19 @@ namespace Engine.Data
                     string? stat = StrOpt(a, "stat");
                     int v = IntOpt(a, "valore");
                     bool atkStat = string.Equals(stat, "ATK", System.StringComparison.OrdinalIgnoreCase);
-                    return new ModificaStat(LeggiBersaglio(a, "creatura", Proprietario.Tutti),
-                        atkStat ? v : 0, atkStat ? 0 : v);
+                    var bers = LeggiBersaglio(a, "creatura", Proprietario.Tutti);
+                    int atk = atkStat ? v : 0, def = atkStat ? 0 : v;
+                    return eMagia ? new ApplicaStat(bers, atk, def) : new ModificaStat(bers, atk, def);
                 }
                 case "modifica_stat_combo":
-                    return new ModificaStat(LeggiBersaglio(a, "creatura", Proprietario.Tutti),
+                {
+                    var bers = LeggiBersaglio(a, "creatura", Proprietario.Tutti);
+                    int atk = IntOpt(a, "atk"), def = IntOpt(a, "def");
+                    return eMagia ? new ApplicaStat(bers, atk, def) : new ModificaStat(bers, atk, def);
+                }
+                case "applica_stat":
+                case "segnalino_stat":
+                    return new ApplicaStat(LeggiBersaglio(a, "creatura", Proprietario.Tutti),
                         IntOpt(a, "atk"), IntOpt(a, "def"));
                 case "concedi_keyword":
                     return new ConcediKeyword(LeggiBersaglio(a, "creatura", Proprietario.Tutti),

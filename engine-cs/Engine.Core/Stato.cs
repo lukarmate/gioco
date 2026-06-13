@@ -47,6 +47,10 @@ namespace Engine.Core
         // Danno accumulato (HS-style): PERSISTE finché non curato (nessun reset a fine turno).
         // La creatura muore quando Danno >= DEF effettiva.
         public int Danno { get; init; }
+        // Modificatori PERSISTENTI (segnalini +X/+X) applicati da effetti one-shot. Restano
+        // sulla creatura anche se la sorgente lascia il campo (diversi dalle aure continue).
+        public int BonusAtk { get; init; }
+        public int BonusDef { get; init; }
     }
 
     public sealed record Giocatore
