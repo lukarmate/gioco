@@ -16,9 +16,9 @@
 - ✅ **Fatigue** (danno crescente a mazzo vuoto) + **cap board 6** (token in eccesso fizzlano)
 - ✅ Interprete effetti E3 completo (etb/upkeep/attacco/morte/attivata/passiva)
 - ✅ **Obiettivi segreti** (meccanica-firma): tutti e 3 i meccanismi (snapshot/accumulatore/streak) + 7 obiettivi (OB-01/02/03/05/07/13/14). Aggiungere il resto del pool §3 = solo nuove voci nel registry (meccanico)
-- 🟡 **Leader**: slice 1 fatto (gioca dalla Zona Comando, costo base + incremento/morte, morte→ritorno in Zona Comando). Resta slice 2: **Hero Power** (azione + cooldown + costo energia) e **passiva** (attiva anche dalla Zona Comando)
+- ✅ **Leader**: gioca dalla Zona Comando (costo base + incremento/morte) · morte→ritorno in Zona Comando · **Hero Power** (`AttivaHeroPower`, costo energia + cooldown, da Zona Comando o campo) · **passiva** attiva anche dalla Zona Comando.
 
-**→ Core engine v1 sostanzialmente completo.** Prossimo bivio: chiudere Leader (hero power/passiva) · estendere pool obiettivi · **oppure passare alla VISTA Unity** (rendere il gioco giocabile: input + animazioni da stream eventi).
+**→ ✅ CORE ENGINE v1 COMPLETO (104 test verdi).** Prossimo: **VISTA Unity giocabile** (input click→gioca/attacca + animazioni da stream eventi → primo MVP testabile). Dettagli engine opzionali residui: resto pool obiettivi (22), verbi E3c.4 (modifica_stat/danno-su-creatura nel loader).
 
 **Test:** `cd engine-cs && dotnet test` (un solo run per volta, macchina lenta — vedi nota in fondo). **Build DLL Unity:** `engine-cs/build-for-unity.sh`. **Vista Unity:** `GiocoTCG/` (mano 3D con testo, `CampoView.cs`).
 
@@ -229,7 +229,7 @@ Nessun lavoro attivo in esecuzione. Bivio deciso a inizio prossima sessione:
 | Fatigue | Danno crescente a mazzo vuoto (`PenalitaMazzoVuoto.Fatigue`, contatore `Giocatore.Fatigue`) | ✅ fatto |
 | Board | Cap 6 slot (`ConfigPartita.CapCampo`); GiocaCreatura fallisce se pieno, token in eccesso fizzlano | ✅ fatto |
 | Obiettivi | Obiettivo segreto — **meccanica-firma** | ✅ tutti e 3 i meccanismi: snapshot (OB-02/05/14), accumulatori per-turno (OB-03/13), **streak** turni-consecutivi (`StreakObiettivo` + `Obiettivi.AggiornaStreak` a fine turno; OB-01/07). Framework in `Obiettivi.cs` + win-check hook in `Engine.Applica`. Resto del pool §3 = nuove voci nel registry |
-| Leader | Leader: Zona Comando, hero power, passiva, morte→ritorno + costo incrementale | 🟡 slice 1: `StatoLeader` + `GiocaLeader` (costo base + `IncrementoLeader`*morti), morte→Zona Comando (no cimitero, Morti++). Resta hero power + passiva |
+| Leader | Leader: Zona Comando, hero power, passiva, morte→ritorno + costo incrementale | ✅ `StatoLeader` + `GiocaLeader` (costo base + `IncrementoLeader`*morti) · morte→Zona Comando · `AttivaHeroPower` (`DefCarta.HeroPower`, costo+cooldown) · passiva attiva da Zona Comando |
 | ~~E5~~ | ~~Stack & priorità~~ | ❌ tagliato in v1 |
 | ~~respawn 3-vite / FFA~~ | ~~vite multiple, multiplayer~~ | ❌ tagliato in v1 (→ v2) |
 

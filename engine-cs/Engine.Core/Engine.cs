@@ -55,6 +55,8 @@ namespace Engine.Core
                     return GiocaCreaturaImpl(stato, gc.Iid);
                 case GiocaLeader _:
                     return GiocaLeaderImpl(stato);
+                case AttivaHeroPower _:
+                    return AttivaHeroPowerImpl(stato);
                 case AttivaAbilita ab:
                     return AttivaAbilitaImpl(stato, ab.Iid);
                 case Attacca atk:
@@ -178,6 +180,29 @@ namespace Engine.Core
             eventi.AddRange(etb.Eventi);
 
             return Risultato.Successo(nuovoStato, eventi);
+        }
+
+        private static Risultato AttivaHeroPowerImpl(StatoPartita stato)
+        {
+            int att = stato.TurnoDi;
+            Giocatore g = stato.Giocatori[att];
+            if (g.Leader is null) return Risultato.Fallito("nessun leader assegnato");
+            if (!stato.Carte.TryGetValue(g.Leader.DefId, out DefCarta? def) || def.HeroPower is null)
+                return Risultato.Fallito("il leader non ha un hero power");
+            HeroPower hp = def.HeroPower;
+            if (g.Leader.CooldownHeroPower > 0) return Risultato.Fallito("hero power in cooldown");
+            if (g.Energia < hp.Costo) return Risultato.Fallito("energia insufficiente");
+
+            var nuovo = g with
+            {
+                Energia = g.Energia - hp.Costo,
+                Leader = g.Leader with { CooldownHeroPower = hp.Cooldown },
+            };
+            var nuovoStato = stato with { Giocatori = stato.Giocatori.Select((gg, i) => i == att ? nuovo : gg).ToArray() };
+
+            string sorgente = g.Leader.Iid ?? $"hp-{att}";
+            var r = Effetti.EseguiAzioni(nuovoStato, att, sorgente, hp.Azioni);
+            return Risultato.Successo(r.Stato, r.Eventi);
         }
 
         private static Risultato AttivaAbilitaImpl(StatoPartita stato, string iid)

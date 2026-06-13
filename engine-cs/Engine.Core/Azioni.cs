@@ -13,7 +13,8 @@ namespace Engine.Core
         int? Atk = null,
         int? Def = null,
         IReadOnlyList<Effetto>? Effetti = null,
-        IReadOnlyList<string>? Keyword = null);
+        IReadOnlyList<string>? Keyword = null,
+        HeroPower? HeroPower = null);
 
     // Comodità di lettura per i tipi compositi dei TS.
     //   DefinizioniCarte = IReadOnlyDictionary<string, DefCarta>
@@ -38,6 +39,9 @@ namespace Engine.Core
 
     // Gioca il proprio Leader dalla Zona di Comando al campo (paga costo base + incremento per morte).
     public sealed record GiocaLeader : Azione;
+
+    // Attiva l'Hero Power del proprio Leader (da Zona Comando o campo): paga energia, va in cooldown.
+    public sealed record AttivaHeroPower : Azione;
 
     // E3 — attiva l'abilità (trigger "attivata") di un permanente proprio in campo.
     // Tappa il permanente ed esegue i suoi effetti attivata. 1 uso/turno (finché stappato).

@@ -21,12 +21,15 @@ namespace Engine.Core
             return new RisultatoFase(stato, eventi);
         }
 
-        // Azzera gli accumulatori per-turno del giocatore attivo (per gli obiettivi).
+        // Azzera gli accumulatori per-turno + scala il cooldown dell'hero power del giocatore attivo.
         private static StatoPartita ResetContatori(StatoPartita stato)
         {
             int att = stato.TurnoDi;
             Giocatore g = stato.Giocatori[att];
-            var nuovo = g with { CarteGiocateQuestoTurno = 0, DanniAvversarioQuestoTurno = 0 };
+            StatoLeader? lead = g.Leader;
+            if (lead != null && lead.CooldownHeroPower > 0)
+                lead = lead with { CooldownHeroPower = lead.CooldownHeroPower - 1 };
+            var nuovo = g with { CarteGiocateQuestoTurno = 0, DanniAvversarioQuestoTurno = 0, Leader = lead };
             return stato with { Giocatori = SostituisciGiocatore(stato, att, nuovo) };
         }
 

@@ -31,6 +31,8 @@ namespace Engine.Core
         public bool InCampo { get; init; }
         public string? Iid { get; init; }
         public int Morti { get; init; }
+        // Turni rimanenti prima di poter riusare l'Hero Power (0 = pronto).
+        public int CooldownHeroPower { get; init; }
     }
 
     public sealed record CartaIstanza

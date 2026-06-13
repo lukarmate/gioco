@@ -38,6 +38,9 @@ namespace Engine.Core
 
     public sealed record Effetto(Trigger Trigger, IReadOnlyList<AzioneEffetto> Azioni);
 
+    // Hero Power del Leader: azioni eseguite pagando Costo energia, riusabile dopo Cooldown turni.
+    public sealed record HeroPower(int Costo, int Cooldown, IReadOnlyList<AzioneEffetto> Azioni);
+
     public static class Effetti
     {
         public sealed record Risultato(StatoPartita Stato, IReadOnlyList<Evento> Eventi);
@@ -54,6 +57,16 @@ namespace Engine.Core
                 foreach (AzioneEffetto az in eff.Azioni)
                     stato = ApplicaAzione(stato, controllore, sorgenteIid, az, eventi);
 
+            return new Risultato(stato, eventi);
+        }
+
+        // Esegue una lista di azioni effetto (usata dall'Hero Power del Leader).
+        public static Risultato EseguiAzioni(
+            StatoPartita stato, int controllore, string sorgenteIid, IReadOnlyList<AzioneEffetto> azioni)
+        {
+            var eventi = new List<Evento>();
+            foreach (AzioneEffetto az in azioni)
+                stato = ApplicaAzione(stato, controllore, sorgenteIid, az, eventi);
             return new Risultato(stato, eventi);
         }
 
@@ -114,6 +127,18 @@ namespace Engine.Core
                 {
                     if (!stato.Carte.TryGetValue(c.DefId, out DefCarta? def) || def.Effetti == null) continue;
                     foreach (Effetto e in def.Effetti)
+                        if (e.Trigger == Trigger.Passiva)
+                            foreach (AzioneEffetto az in e.Azioni)
+                                yield return (i, az);
+                }
+
+                // La passiva del Leader è attiva anche dalla Zona di Comando (quando NON in campo,
+                // per non contarla due volte: in campo è già scansionata sopra).
+                StatoLeader? lead = stato.Giocatori[i].Leader;
+                if (lead != null && !lead.InCampo
+                    && stato.Carte.TryGetValue(lead.DefId, out DefCarta? ldef) && ldef.Effetti != null)
+                {
+                    foreach (Effetto e in ldef.Effetti)
                         if (e.Trigger == Trigger.Passiva)
                             foreach (AzioneEffetto az in e.Azioni)
                                 yield return (i, az);
