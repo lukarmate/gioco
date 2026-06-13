@@ -27,13 +27,24 @@ namespace Engine.Core
             {
                 if (inizia.Mazzi.Count < 2 || inizia.Mazzi.Count > 4)
                     return Risultato.Fallito("servono da 2 a 4 mazzi");
-                var r = Setup.IniziaPartita(inizia);
-                return Risultato.Successo(r.Stato, r.Eventi);
+                var rs = Setup.IniziaPartita(inizia);
+                return Risultato.Successo(rs.Stato, rs.Eventi);
             }
 
             if (stato is null) return Risultato.Fallito("partita non iniziata");
             if (stato.Finita) return Risultato.Fallito("partita finita");
 
+            Risultato r = Dispatch(stato, azione);
+            if (!r.Ok || r.Stato is null) return r;
+
+            // Dopo ogni azione: valuta gli obiettivi segreti (vittoria parallela agli HP).
+            var (s2, evObj) = Obiettivi.AggiornaEControlla(r.Stato);
+            if (evObj.Count == 0) return r;
+            return Risultato.Successo(s2, r.Eventi.Concat(evObj).ToList());
+        }
+
+        private static Risultato Dispatch(StatoPartita stato, Azione azione)
+        {
             switch (azione)
             {
                 case PassaTurno _:

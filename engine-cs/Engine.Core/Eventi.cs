@@ -23,6 +23,10 @@ namespace Engine.Core
     // Energia generata da un effetto (verbo genera_mana → energia).
     public sealed record EnergiaGenerata(int Giocatore, int Quantita) : Evento;
 
+    // Obiettivi segreti.
+    public sealed record ObiettivoProgredito(int Giocatore, ProgressoObiettivo Progresso) : Evento;
+    public sealed record ObiettivoCompletato(int Giocatore, string ObiettivoId) : Evento;
+
     // E3 — effetti.
     public sealed record CartaMacinata(int Giocatore, string Iid) : Evento;
     public sealed record TokenGenerato(int Giocatore, string Iid, string Nome) : Evento;
