@@ -53,6 +53,8 @@ namespace Engine.Core
                     return ScartaImpl(stato, scarta.Iids);
                 case GiocaCreatura gc:
                     return GiocaCreaturaImpl(stato, gc.Iid);
+                case GiocaMagia gm:
+                    return GiocaMagiaImpl(stato, gm.Iid);
                 case GiocaLeader _:
                     return GiocaLeaderImpl(stato);
                 case AttivaHeroPower _:
@@ -139,6 +141,47 @@ namespace Engine.Core
             nuovoStato = etb.Stato;
             eventi.AddRange(etb.Eventi);
 
+            return Risultato.Successo(nuovoStato, eventi);
+        }
+
+        private static Risultato GiocaMagiaImpl(StatoPartita stato, string iid)
+        {
+            int att = stato.TurnoDi;
+            Giocatore g = stato.Giocatori[att];
+            CartaIstanza? carta = g.Mano.FirstOrDefault(c => c.Iid == iid);
+            if (carta is null) return Risultato.Fallito("carta non in mano");
+
+            if (!stato.Carte.TryGetValue(carta.DefId, out DefCarta? def))
+                return Risultato.Fallito("definizione carta mancante");
+            if (def.Tipo.IndexOf("Magia", System.StringComparison.OrdinalIgnoreCase) < 0)
+                return Risultato.Fallito("la carta non è una magia");
+
+            int costo = def.Costo?.Totale ?? 0;
+            if (g.Energia < costo) return Risultato.Fallito("energia insufficiente");
+
+            // Esce dalla mano, paga energia, conta come carta giocata.
+            var mano = g.Mano.Where(c => c.Iid != iid).ToList();
+            var nuovo = g with
+            {
+                Mano = mano, Energia = g.Energia - costo,
+                CarteGiocateQuestoTurno = g.CarteGiocateQuestoTurno + 1,
+            };
+            var nuovoStato = stato with { Giocatori = stato.Giocatori.Select((gg, i) => i == att ? nuovo : gg).ToArray() };
+            var eventi = new List<Evento> { new MagiaGiocata(att, iid) };
+
+            // Effetti one-shot: esegue tutte le azioni della magia (il trigger nel dato è ignorato).
+            var azioni = (def.Effetti ?? new List<Effetto>()).SelectMany(e => e.Azioni).ToList();
+            var r = Effetti.EseguiAzioni(nuovoStato, att, iid, azioni);
+            nuovoStato = r.Stato;
+            eventi.AddRange(r.Eventi);
+
+            // La magia risolta va al cimitero.
+            Giocatore g2 = nuovoStato.Giocatori[att];
+            var cimitero = g2.Cimitero.Concat(new[] { carta }).ToList();
+            nuovoStato = nuovoStato with
+            {
+                Giocatori = nuovoStato.Giocatori.Select((gg, i) => i == att ? gg with { Cimitero = cimitero } : gg).ToArray(),
+            };
             return Risultato.Successo(nuovoStato, eventi);
         }
 

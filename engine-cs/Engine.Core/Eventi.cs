@@ -20,6 +20,7 @@ namespace Engine.Core
 
     // E2 — gioco di permanenti.
     public sealed record CreaturaGiocata(int Giocatore, string Iid) : Evento;
+    public sealed record MagiaGiocata(int Giocatore, string Iid) : Evento;
     // Leader.
     public sealed record LeaderGiocato(int Giocatore, string Iid) : Evento;
     public sealed record LeaderTornatoInComando(int Giocatore, int Morti) : Evento;

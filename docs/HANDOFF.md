@@ -18,7 +18,20 @@
 - ✅ **Obiettivi segreti** (meccanica-firma): tutti e 3 i meccanismi (snapshot/accumulatore/streak) + 7 obiettivi (OB-01/02/03/05/07/13/14). Aggiungere il resto del pool §3 = solo nuove voci nel registry (meccanico)
 - ✅ **Leader**: gioca dalla Zona Comando (costo base + incremento/morte) · morte→ritorno in Zona Comando · **Hero Power** (`AttivaHeroPower`, costo energia + cooldown, da Zona Comando o campo) · **passiva** attiva anche dalla Zona Comando.
 
-**→ ✅ CORE ENGINE v1 COMPLETO (104 test verdi).** Prossimo: **VISTA Unity giocabile** (input click→gioca/attacca + animazioni da stream eventi → primo MVP testabile). Dettagli engine opzionali residui: resto pool obiettivi (22), verbi E3c.4 (modifica_stat/danno-su-creatura nel loader).
+**→ ✅ CORE ENGINE v1 (108 test verdi) — 3 tipi carta completi (Creatura/Magia/Leader).** Prossimo dopo le rifiniture sotto: **VISTA Unity giocabile**.
+
+### 🔧 DA RIFINIRE / DA FARE (engine v1)
+Ordine di priorità:
+- ✅ **Magie (`GiocaMagia`)** — fatto. Gioca dalla mano → esegue effetti one-shot → cimitero. (Verbi one-shot danno/pesca/distruggi/mill ok; le magie con `modifica_stat`/`concedi_keyword` aspettano i modificatori persistenti, sotto.)
+- 🟠 **Loader buff:** `CarteDb` scarta `modifica_stat`/`modifica_stat_combo`/`concedi_keyword` → mapparli (AST+executor già pronti per le passive continue).
+- 🟠 **`infliggi_danno` a creatura:** oggi solo bersaglio-giocatore; col danno persistente è banale (accumula `CartaIstanza.Danno`).
+- 🟠 **State-based death dopo ogni azione:** ora la morte per DEF≤0 si controlla solo dopo `Attacca`; va fatto girare dopo ogni azione (es. debuff da passiva che porta a 0).
+- 🟠 **Modifica-stat persistente su creatura (segnalini):** serve per le magie/effetti one-shot che buffano/debuffano (es. magia −2/−2 a una creatura). Oggi `ModificaStat` è solo aura continua (sorgente in campo). Serve un modello di modificatori persistenti su `CartaIstanza`.
+- 🟡 **Resto pool obiettivi (22):** OB-09/10/11 (creature distrutte/turno), OB-16/17 (leader in campo), OB-19/20/21 (danno subito) → servono contatori nuovi. OB-04/06/08/12/15/22 ecc.
+- 🟡 **Verbi con scelta (`quantificatore: una`):** targeting input (per distruggi/danno/buff a bersaglio singolo).
+- 🟡 **Assegnazione obiettivi/leader a inizio partita:** `IniziaPartita` non li imposta (li legge solo) → helper engine o app-layer.
+- 🟡 **Cura/heal:** verbo `cura` (riduce `Danno`), abilitato dal modello danno persistente.
+- ⚪ **App-layer/tuning:** validatore deckbuilding (mono-fazione + Nomadi), soglie telegrafo (0.33/0.66), tie-break multi-obiettivo stesso turno, probabilità pack in-app.
 
 **Test:** `cd engine-cs && dotnet test` (un solo run per volta, macchina lenta — vedi nota in fondo). **Build DLL Unity:** `engine-cs/build-for-unity.sh`. **Vista Unity:** `GiocoTCG/` (mano 3D con testo, `CampoView.cs`).
 

@@ -37,6 +37,9 @@ namespace Engine.Core
     // E2 — gioco di permanenti.
     public sealed record GiocaCreatura(string Iid) : Azione;
 
+    // Gioca una Magia dalla mano: esegue gli effetti one-shot, poi va al cimitero.
+    public sealed record GiocaMagia(string Iid) : Azione;
+
     // Gioca il proprio Leader dalla Zona di Comando al campo (paga costo base + incremento per morte).
     public sealed record GiocaLeader : Azione;
 
