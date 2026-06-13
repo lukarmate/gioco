@@ -32,7 +32,10 @@ namespace Engine.Core
             var nuovo = g with
             {
                 CarteGiocateQuestoTurno = 0, DanniAvversarioQuestoTurno = 0,
-                AttacchiQuestoTurno = 0, EnergiaSpesaQuestoTurno = 0, Leader = lead,
+                AttacchiQuestoTurno = 0, EnergiaSpesaQuestoTurno = 0,
+                CreatureNemicheDistrutteQuestoTurno = 0,
+                CreatureColpisconoFaccia = new List<string>(),
+                Leader = lead,
             };
             return stato with { Giocatori = SostituisciGiocatore(stato, att, nuovo) };
         }

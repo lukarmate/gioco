@@ -38,11 +38,41 @@ namespace Engine.Core
             if (!r.Ok || r.Stato is null) return r;
 
             var eventi = new List<Evento>(r.Eventi);
-            // Dopo ogni azione: morte state-based (creature con Danno >= DEF effettiva), poi obiettivi.
+            // Dopo ogni azione: morte state-based, aggiorna i contatori obiettivo dagli eventi, poi obiettivi.
             StatoPartita s = MortiStateBased(r.Stato, eventi);
+            s = AggiornaContatoriDaEventi(s, eventi);
             var (s2, evObj) = Obiettivi.AggiornaEControlla(s);
             eventi.AddRange(evObj);
             return Risultato.Successo(s2, eventi);
+        }
+
+        // Aggiorna i contatori-obiettivo che derivano dagli eventi dell'azione appena risolta.
+        private static StatoPartita AggiornaContatoriDaEventi(StatoPartita s, IReadOnlyList<Evento> eventi)
+        {
+            int att = s.TurnoDi;
+            // Kill-attribution: le creature avversarie morte durante il turno attivo sono attribuite a lui.
+            int kills = eventi.OfType<CreaturaDistrutta>().Count(e => e.Proprietario != att);
+            // Danno subito (finestra) per ogni giocatore colpito.
+            var danno = new int[s.Giocatori.Count];
+            foreach (var dg in eventi.OfType<DannoGiocatore>())
+                if (dg.Giocatore >= 0 && dg.Giocatore < danno.Length) danno[dg.Giocatore] += dg.Danno;
+
+            if (kills == 0 && danno.All(d => d == 0)) return s;
+
+            var giocatori = s.Giocatori.Select((g, i) =>
+            {
+                var ng = g;
+                if (i == att && kills > 0)
+                    ng = ng with
+                    {
+                        CreatureNemicheDistrutte = ng.CreatureNemicheDistrutte + kills,
+                        CreatureNemicheDistrutteQuestoTurno = ng.CreatureNemicheDistrutteQuestoTurno + kills,
+                    };
+                if (danno[i] > 0)
+                    ng = ng with { DannoSubitoFinestra = ng.DannoSubitoFinestra + danno[i] };
+                return ng;
+            }).ToArray();
+            return s with { Giocatori = giocatori };
         }
 
         private static Risultato Dispatch(StatoPartita stato, Azione azione)
@@ -86,8 +116,11 @@ namespace Engine.Core
             int n = stato.Giocatori.Count;
             int prossimo = (att + 1) % n;
 
-            // Obiettivi streak: valuta la condizione a fine turno del giocatore che sta passando.
+            // Obiettivi streak: valuta la condizione a fine turno del giocatore che sta passando,
+            // poi azzera la finestra del danno subito (per gli OB difensivi).
             stato = Obiettivi.AggiornaStreak(stato, att);
+            stato = stato with { Giocatori = stato.Giocatori.Select((gg, i) =>
+                i == att ? gg with { DannoSubitoFinestra = 0 } : gg).ToArray() };
 
             var statoPassato = stato with
             {
@@ -245,6 +278,7 @@ namespace Engine.Core
             {
                 Energia = g.Energia - hp.Costo,
                 EnergiaSpesaQuestoTurno = g.EnergiaSpesaQuestoTurno + hp.Costo,
+                HeroPowerTurniUsati = g.HeroPowerTurniUsati + 1, // il cooldown impedisce 2 usi nello stesso turno
                 Leader = g.Leader with { CooldownHeroPower = hp.Cooldown },
             };
             var nuovoStato = stato with { Giocatori = stato.Giocatori.Select((gg, i) => i == att ? nuovo : gg).ToArray() };
@@ -334,6 +368,19 @@ namespace Engine.Core
             {
                 // Attacco agli HP del giocatore avversario.
                 stato = InfliggiAGiocatore(stato, dif, atkAtt, att, eventi);
+
+                // Traccia gli attaccanti che colpiscono la faccia (OB-04) e il leader (OB-16).
+                if (atkAtt > 0)
+                {
+                    Giocatore ga = stato.Giocatori[att];
+                    var lista = ga.CreatureColpisconoFaccia.Contains(attaccanteIid)
+                        ? ga.CreatureColpisconoFaccia
+                        : ga.CreatureColpisconoFaccia.Concat(new[] { attaccanteIid }).ToList();
+                    bool leaderFaccia = ga.LeaderHaColpitoFaccia
+                        || (ga.Leader is { InCampo: true } lead && lead.Iid == attaccanteIid);
+                    stato = stato with { Giocatori = stato.Giocatori.Select((gg, i) =>
+                        i == att ? gg with { CreatureColpisconoFaccia = lista, LeaderHaColpitoFaccia = leaderFaccia } : gg).ToArray() };
+                }
             }
             else
             {

@@ -39,6 +39,16 @@ namespace Engine.Core
                     (s.NumeroTurno >= 7 ? s.Giocatori[g].Hp : 0, 24)),
                 ["OB-22"] = (new DefObiettivo("OB-22", "Sfida Aperta"), (s, g) =>
                     (s.Giocatori[g].AttacchiQuestoTurno, 4)),
+                ["OB-04"] = (new DefObiettivo("OB-04", "Sangue per Sangue"), (s, g) =>
+                    (s.Giocatori[g].CreatureColpisconoFaccia.Count, 3)),
+                ["OB-09"] = (new DefObiettivo("OB-09", "Mietitore"), (s, g) =>
+                    (s.Giocatori[g].CreatureNemicheDistrutte, 4)),
+                ["OB-10"] = (new DefObiettivo("OB-10", "Strage"), (s, g) =>
+                    (s.Giocatori[g].CreatureNemicheDistrutteQuestoTurno, 2)),
+                ["OB-16"] = (new DefObiettivo("OB-16", "Avanguardia"), (s, g) =>
+                    (s.Giocatori[g].LeaderHaColpitoFaccia ? 1 : 0, 1)),
+                ["OB-18"] = (new DefObiettivo("OB-18", "Volontà di Ferro"), (s, g) =>
+                    (s.Giocatori[g].HeroPowerTurniUsati, 3)),
                 ["OB-13"] = (new DefObiettivo("OB-13", "Profusione"), (s, g) =>
                     (s.Giocatori[g].CarteGiocateQuestoTurno, 4)),
                 ["OB-14"] = (new DefObiettivo("OB-14", "Eco dei Caduti"), (s, g) =>
@@ -50,6 +60,16 @@ namespace Engine.Core
                     (s.Giocatori[g].StreakObiettivo, 3)),
                 ["OB-12"] = (new DefObiettivo("OB-12", "Mente Lucida"), (s, g) =>
                     (s.Giocatori[g].StreakObiettivo, 2)),
+                ["OB-08"] = (new DefObiettivo("OB-08", "Linea di Difesa"), (s, g) =>
+                    (s.Giocatori[g].StreakObiettivo, 2)),
+                ["OB-11"] = (new DefObiettivo("OB-11", "Rappresaglia"), (s, g) =>
+                    (s.Giocatori[g].StreakObiettivo, 3)),
+                ["OB-17"] = (new DefObiettivo("OB-17", "Stendardo di Guerra"), (s, g) =>
+                    (s.Giocatori[g].StreakObiettivo, 2)),
+                ["OB-20"] = (new DefObiettivo("OB-20", "Muro Inviolato"), (s, g) =>
+                    (s.Giocatori[g].StreakObiettivo, 2)),
+                ["OB-21"] = (new DefObiettivo("OB-21", "Resistenza"), (s, g) =>
+                    (s.Giocatori[g].StreakObiettivo, 4)),
             };
 
         // Condizione "per turno" degli obiettivi streak: valutata a fine turno del giocatore.
@@ -60,6 +80,17 @@ namespace Engine.Core
                 ["OB-01"] = (s, g) => s.Giocatori[g].DanniAvversarioQuestoTurno > 0,
                 ["OB-07"] = (s, g) => Creature(s, g) > Creature(s, (g + 1) % s.Giocatori.Count),
                 ["OB-12"] = (s, g) => s.Giocatori[g].Mano.Count >= 6,
+                // OB-08: almeno 3 creature con DEF non danneggiata (Danno == 0).
+                ["OB-08"] = (s, g) => s.Giocatori[g].Campo.Count(c =>
+                    s.Carte.TryGetValue(c.DefId, out var d) && d.Atk != null && c.Danno == 0) >= 3,
+                // OB-11: ha distrutto almeno una creatura avversaria questo turno.
+                ["OB-11"] = (s, g) => s.Giocatori[g].CreatureNemicheDistrutteQuestoTurno > 0,
+                // OB-17: il Leader è sopravvissuto in campo per tutto il turno.
+                ["OB-17"] = (s, g) => s.Giocatori[g].Leader is { InCampo: true },
+                // OB-20: non ha subito danno nella finestra (dal turno 3 in poi).
+                ["OB-20"] = (s, g) => s.NumeroTurno >= 3 && s.Giocatori[g].DannoSubitoFinestra == 0,
+                // OB-21: controlla almeno 1 creatura.
+                ["OB-21"] = (s, g) => Creature(s, g) >= 1,
             };
 
         // Da chiamare a FINE turno del giocatore g (prima di passare): aggiorna il suo streak.

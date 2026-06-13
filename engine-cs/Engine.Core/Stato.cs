@@ -74,6 +74,17 @@ namespace Engine.Core
         public int DanniAvversarioQuestoTurno { get; init; }
         public int AttacchiQuestoTurno { get; init; }
         public int EnergiaSpesaQuestoTurno { get; init; }
+        // Creature avversarie distrutte da questo giocatore (cumulativo + per-turno).
+        public int CreatureNemicheDistrutte { get; init; }
+        public int CreatureNemicheDistrutteQuestoTurno { get; init; }
+        // Danno subito nella finestra dall'ultimo fine-turno (per OB difensivi). Reset a fine turno.
+        public int DannoSubitoFinestra { get; init; }
+        // Iid distinti delle proprie creature che hanno colpito gli HP avversari questo turno.
+        public IReadOnlyList<string> CreatureColpisconoFaccia { get; init; } = new List<string>();
+        // Il Leader ha inflitto danno agli HP avversari (cumulativo, per OB-16).
+        public bool LeaderHaColpitoFaccia { get; init; }
+        // Numero di turni in cui ha attivato l'Hero Power (cumulativo, per OB-18).
+        public int HeroPowerTurniUsati { get; init; }
         // Streak: turni consecutivi in cui la condizione dell'obiettivo è soddisfatta a fine turno.
         public int StreakObiettivo { get; init; }
         // Leader (Zona di Comando). null nei test che non lo usano.
