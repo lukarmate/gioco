@@ -27,7 +27,10 @@ namespace Engine.Core
         int Seed,
         ConfigPartita Config,
         IReadOnlyList<IReadOnlyList<string>> Mazzi,
-        IReadOnlyDictionary<string, DefCarta> Carte) : Azione;
+        IReadOnlyDictionary<string, DefCarta> Carte,
+        // Opzionali, per giocatore (indice = id). Leader[i] = defId del leader; Obiettivi[i] = id obiettivo.
+        IReadOnlyList<string?>? Leader = null,
+        IReadOnlyList<string?>? Obiettivi = null) : Azione;
 
     // v1: passa il turno (end step automatico + begin step del prossimo giocatore).
     public sealed record PassaTurno : Azione;
@@ -38,7 +41,8 @@ namespace Engine.Core
     public sealed record GiocaCreatura(string Iid) : Azione;
 
     // Gioca una Magia dalla mano: esegue gli effetti one-shot, poi va al cimitero.
-    public sealed record GiocaMagia(string Iid) : Azione;
+    // Bersaglio = iid della creatura scelta (per gli effetti con quantificatore "una"). null = nessuna scelta.
+    public sealed record GiocaMagia(string Iid, string? Bersaglio = null) : Azione;
 
     // Gioca il proprio Leader dalla Zona di Comando al campo (paga costo base + incremento per morte).
     public sealed record GiocaLeader : Azione;

@@ -105,9 +105,8 @@ namespace Engine.Tests
             };
             var s = E2.Avvia(carte);
             s = E2.FinoAMain1(s);
-            (s, _) = E2.MettiInCampo(s, 1, "GOLEM");
-            var (s2, _2) = E2.MettiInCampo(s, 1, "GOLEM");
-            s = s2;
+            (s, _) = E2.MettiInCampo(s, 1, "GOLEM", iidSuffix: "1");
+            (s, _) = E2.MettiInCampo(s, 1, "GOLEM", iidSuffix: "2");
             var (s3, iid) = E2.MettiInMano(s, 0, "STERMINIO");
             s = s3;
             int campoPrima = s.Giocatori[1].Campo.Count;

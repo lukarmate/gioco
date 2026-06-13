@@ -32,6 +32,8 @@ namespace Engine.Core
     public sealed record Mill(Bersaglio Bersaglio, int Valore) : AzioneEffetto;
     // Controllore: "tu" = chi controlla la sorgente, "avversario" = primo avversario.
     public sealed record GeneraToken(string Nome, int Atk, int Def, string Controllore = "tu") : AzioneEffetto;
+    // Cura: rimuove Danno dalle creature bersaglio (min 0). Abilitato dal modello danno persistente.
+    public sealed record Cura(Bersaglio Bersaglio, int Valore) : AzioneEffetto;
     // Effetti STATICI (trigger Passiva): non mutano lo stato, sono letti da StatEffettive/KeywordEffettive.
     public sealed record ModificaStat(Bersaglio Bersaglio, int Atk, int Def) : AzioneEffetto;
     public sealed record ConcediKeyword(Bersaglio Bersaglio, string Keyword) : AzioneEffetto;
@@ -50,42 +52,77 @@ namespace Engine.Core
         // Esegue, in ordine, tutti gli effetti della carta che corrispondono al trigger dato.
         // controllore = giocatore che controlla la sorgente; sorgenteIid = istanza che genera.
         public static Risultato EseguiTrigger(
-            StatoPartita stato, DefCarta def, int controllore, string sorgenteIid, Trigger trigger)
+            StatoPartita stato, DefCarta def, int controllore, string sorgenteIid, Trigger trigger,
+            string? scelta = null)
         {
             var eventi = new List<Evento>();
             if (def.Effetti == null) return new Risultato(stato, eventi);
 
             foreach (Effetto eff in def.Effetti.Where(e => e.Trigger == trigger))
                 foreach (AzioneEffetto az in eff.Azioni)
-                    stato = ApplicaAzione(stato, controllore, sorgenteIid, az, eventi);
+                    stato = ApplicaAzione(stato, controllore, sorgenteIid, az, ev: eventi, scelta);
 
             return new Risultato(stato, eventi);
         }
 
-        // Esegue una lista di azioni effetto (usata dall'Hero Power del Leader).
+        // Esegue una lista di azioni effetto (usata da Magia e Hero Power). scelta = bersaglio
+        // singolo scelto dal giocatore (per i verbi con quantificatore "una").
         public static Risultato EseguiAzioni(
-            StatoPartita stato, int controllore, string sorgenteIid, IReadOnlyList<AzioneEffetto> azioni)
+            StatoPartita stato, int controllore, string sorgenteIid, IReadOnlyList<AzioneEffetto> azioni,
+            string? scelta = null)
         {
             var eventi = new List<Evento>();
             foreach (AzioneEffetto az in azioni)
-                stato = ApplicaAzione(stato, controllore, sorgenteIid, az, eventi);
+                stato = ApplicaAzione(stato, controllore, sorgenteIid, az, eventi, scelta);
             return new Risultato(stato, eventi);
         }
 
         private static StatoPartita ApplicaAzione(
-            StatoPartita stato, int ctrl, string iid, AzioneEffetto az, List<Evento> ev)
+            StatoPartita stato, int ctrl, string iid, AzioneEffetto az, List<Evento> ev, string? scelta = null)
         {
             switch (az)
             {
                 case Pesca p: return EseguiPesca(stato, ctrl, p.Valore, ev);
                 case GeneraMana g: return EseguiGeneraMana(stato, ctrl, g.Valore, ev);
-                case InfliggiDanno d: return EseguiInfliggiDanno(stato, ctrl, d.Bersaglio, d.Valore, ev);
-                case Distruggi ds: return EseguiDistruggi(stato, ctrl, ds.Bersaglio, ev);
+                case InfliggiDanno d: return EseguiInfliggiDanno(stato, ctrl, d.Bersaglio, d.Valore, ev, scelta);
+                case Distruggi ds: return EseguiDistruggi(stato, ctrl, ds.Bersaglio, ev, scelta);
                 case Mill m: return EseguiMill(stato, ctrl, m.Bersaglio, m.Valore, ev);
                 case GeneraToken t: return EseguiGeneraToken(stato, ctrl, iid, t, ev);
-                case ApplicaStat ap: return EseguiApplicaStat(stato, ctrl, ap, ev);
+                case ApplicaStat ap: return EseguiApplicaStat(stato, ctrl, ap, ev, scelta);
+                case Cura cu: return EseguiCura(stato, ctrl, cu, ev, scelta);
                 default: return stato;
             }
+        }
+
+        // Risolve le creature bersaglio (gestisce "una" via la scelta del giocatore).
+        private static IReadOnlyList<(int idx, string iid)> CreatureBersagliate(
+            StatoPartita stato, int ctrl, Bersaglio b, string? scelta)
+        {
+            var res = new List<(int, string)>();
+            if (b.Tipo != "creatura") return res;
+
+            if (b.Quantificatore == Quantificatore.Una)
+            {
+                if (scelta == null) return res; // nessun bersaglio scelto
+                foreach (int idx in RisolviGiocatori(stato, ctrl, b.Proprietario))
+                {
+                    CartaIstanza? c = stato.Giocatori[idx].Campo.FirstOrDefault(x => x.Iid == scelta);
+                    if (c != null && ECreatura(stato, c)) { res.Add((idx, scelta)); return res; }
+                }
+                return res; // scelta non valida
+            }
+
+            foreach (int idx in RisolviGiocatori(stato, ctrl, b.Proprietario))
+                foreach (CartaIstanza c in stato.Giocatori[idx].Campo)
+                    if (ECreatura(stato, c)) res.Add((idx, c.Iid));
+            return res;
+        }
+
+        private static StatoPartita ConDannoCreatura(StatoPartita stato, int idx, string iid, System.Func<CartaIstanza, CartaIstanza> f)
+        {
+            Giocatore g = stato.Giocatori[idx];
+            var campo = g.Campo.Select(c => c.Iid == iid ? f(c) : c).ToList();
+            return stato with { Giocatori = Sostituisci(stato, idx, g with { Campo = campo }) };
         }
 
         // --- effetti statici (passiva): stat e keyword effettive ---
@@ -212,22 +249,15 @@ namespace Engine.Core
         }
 
         private static StatoPartita EseguiInfliggiDanno(
-            StatoPartita stato, int ctrl, Bersaglio bersaglio, int valore, List<Evento> ev)
+            StatoPartita stato, int ctrl, Bersaglio bersaglio, int valore, List<Evento> ev, string? scelta)
         {
             // Bersaglio creatura: accumula Danno (la morte la decide lo state-based globale).
             if (bersaglio.Tipo == "creatura")
             {
-                if (bersaglio.Quantificatore == Quantificatore.Una) return stato; // scelta -> 🟡
-                foreach (int idx in RisolviGiocatori(stato, ctrl, bersaglio.Proprietario).ToList())
+                foreach (var (idx, tid) in CreatureBersagliate(stato, ctrl, bersaglio, scelta))
                 {
-                    Giocatore g = stato.Giocatori[idx];
-                    var campo = g.Campo.Select(c =>
-                    {
-                        if (!ECreatura(stato, c)) return c;
-                        ev.Add(new DannoCreatura(c.Iid, valore));
-                        return c with { Danno = c.Danno + valore };
-                    }).ToList();
-                    stato = stato with { Giocatori = Sostituisci(stato, idx, g with { Campo = campo }) };
+                    stato = ConDannoCreatura(stato, idx, tid, c => c with { Danno = c.Danno + valore });
+                    ev.Add(new DannoCreatura(tid, valore));
                 }
                 return stato;
             }
@@ -251,31 +281,19 @@ namespace Engine.Core
         }
 
         private static StatoPartita EseguiDistruggi(
-            StatoPartita stato, int ctrl, Bersaglio bersaglio, List<Evento> ev)
+            StatoPartita stato, int ctrl, Bersaglio bersaglio, List<Evento> ev, string? scelta)
         {
-            // E3a: solo quantificatori deterministici (Tutte/Ogni); Una -> E3b.
-            if (bersaglio.Quantificatore == Quantificatore.Una) return stato;
-
             var morti = new List<(string iid, string defId, int prop)>();
-            foreach (int idx in RisolviGiocatori(stato, ctrl, bersaglio.Proprietario).ToList())
+            foreach (var (idx, tid) in CreatureBersagliate(stato, ctrl, bersaglio, scelta))
             {
                 Giocatore g = stato.Giocatori[idx];
-                var rimaste = new List<CartaIstanza>();
-                var cimitero = g.Cimitero.ToList();
-                foreach (CartaIstanza c in g.Campo)
-                {
-                    if (ECreatura(stato, c))
-                    {
-                        cimitero.Add(c);
-                        ev.Add(new CreaturaDistrutta(c.Iid, c.Proprietario));
-                        morti.Add((c.Iid, c.DefId, c.Proprietario));
-                    }
-                    else rimaste.Add(c);
-                }
-                stato = stato with
-                {
-                    Giocatori = Sostituisci(stato, idx, g with { Campo = rimaste, Cimitero = cimitero }),
-                };
+                CartaIstanza? c = g.Campo.FirstOrDefault(x => x.Iid == tid);
+                if (c is null) continue;
+                var campo = g.Campo.Where(x => x.Iid != tid).ToList();
+                var cimitero = g.Cimitero.Concat(new[] { c with { Danno = 0 } }).ToList();
+                stato = stato with { Giocatori = Sostituisci(stato, idx, g with { Campo = campo, Cimitero = cimitero }) };
+                ev.Add(new CreaturaDistrutta(tid, c.Proprietario));
+                morti.Add((tid, c.DefId, c.Proprietario));
             }
             return EseguiMorti(stato, morti, ev);
         }
@@ -319,20 +337,22 @@ namespace Engine.Core
             return stato;
         }
 
-        // One-shot: aggiunge segnalini +X/+X persistenti alle creature bersaglio (deterministico).
-        private static StatoPartita EseguiApplicaStat(
-            StatoPartita stato, int ctrl, ApplicaStat ap, List<Evento> ev)
+        // Rimuove Danno dalle creature bersaglio (cura).
+        private static StatoPartita EseguiCura(StatoPartita stato, int ctrl, Cura cu, List<Evento> ev, string? scelta)
         {
-            if (ap.Bersaglio.Quantificatore == Quantificatore.Una) return stato; // scelta -> 🟡
-            foreach (int idx in RisolviGiocatori(stato, ctrl, ap.Bersaglio.Proprietario).ToList())
-            {
-                Giocatore g = stato.Giocatori[idx];
-                var campo = g.Campo.Select(c =>
-                    ECreatura(stato, c)
-                        ? c with { BonusAtk = c.BonusAtk + ap.Atk, BonusDef = c.BonusDef + ap.Def }
-                        : c).ToList();
-                stato = stato with { Giocatori = Sostituisci(stato, idx, g with { Campo = campo }) };
-            }
+            foreach (var (idx, tid) in CreatureBersagliate(stato, ctrl, cu.Bersaglio, scelta))
+                stato = ConDannoCreatura(stato, idx, tid, c =>
+                    c.Danno > 0 ? c with { Danno = System.Math.Max(0, c.Danno - cu.Valore) } : c);
+            return stato;
+        }
+
+        // One-shot: aggiunge segnalini +X/+X persistenti alle creature bersaglio.
+        private static StatoPartita EseguiApplicaStat(
+            StatoPartita stato, int ctrl, ApplicaStat ap, List<Evento> ev, string? scelta)
+        {
+            foreach (var (idx, tid) in CreatureBersagliate(stato, ctrl, ap.Bersaglio, scelta))
+                stato = ConDannoCreatura(stato, idx, tid, c =>
+                    c with { BonusAtk = c.BonusAtk + ap.Atk, BonusDef = c.BonusDef + ap.Def });
             return stato;
         }
 

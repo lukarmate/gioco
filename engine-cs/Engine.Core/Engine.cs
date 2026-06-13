@@ -56,7 +56,7 @@ namespace Engine.Core
                 case GiocaCreatura gc:
                     return GiocaCreaturaImpl(stato, gc.Iid);
                 case GiocaMagia gm:
-                    return GiocaMagiaImpl(stato, gm.Iid);
+                    return GiocaMagiaImpl(stato, gm.Iid, gm.Bersaglio);
                 case GiocaLeader _:
                     return GiocaLeaderImpl(stato);
                 case AttivaHeroPower _:
@@ -146,7 +146,7 @@ namespace Engine.Core
             return Risultato.Successo(nuovoStato, eventi);
         }
 
-        private static Risultato GiocaMagiaImpl(StatoPartita stato, string iid)
+        private static Risultato GiocaMagiaImpl(StatoPartita stato, string iid, string? bersaglioScelto)
         {
             int att = stato.TurnoDi;
             Giocatore g = stato.Giocatori[att];
@@ -173,7 +173,7 @@ namespace Engine.Core
 
             // Effetti one-shot: esegue tutte le azioni della magia (il trigger nel dato è ignorato).
             var azioni = (def.Effetti ?? new List<Effetto>()).SelectMany(e => e.Azioni).ToList();
-            var r = Effetti.EseguiAzioni(nuovoStato, att, iid, azioni);
+            var r = Effetti.EseguiAzioni(nuovoStato, att, iid, azioni, bersaglioScelto);
             nuovoStato = r.Stato;
             eventi.AddRange(r.Eventi);
 

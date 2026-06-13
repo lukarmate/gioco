@@ -27,10 +27,10 @@ Ordine di priorità:
 - ✅ **`infliggi_danno` a creatura:** accumula `CartaIstanza.Danno`; la morte la decide lo state-based globale.
 - ✅ **State-based death dopo ogni azione:** `MortiStateBased` gira in `Engine.Applica` dopo ogni azione (non più solo dopo `Attacca`).
 - ✅ **Modifica-stat persistente su creatura (segnalini):** `CartaIstanza.BonusAtk/BonusDef` + verbo `ApplicaStat` (one-shot, letto in `StatEffettive`). Il loader distingue per tipo: `modifica_stat`/`combo` su **Magia** → `ApplicaStat` (segnalino persistente), su **permanente** → `ModificaStat` (aura). `applica_stat`/`segnalino_stat` → `ApplicaStat`.
-- 🟡 **Resto pool obiettivi (22):** OB-09/10/11 (creature distrutte/turno), OB-16/17 (leader in campo), OB-19/20/21 (danno subito) → servono contatori nuovi. OB-04/06/08/12/15/22 ecc.
-- 🟡 **Verbi con scelta (`quantificatore: una`):** targeting input (per distruggi/danno/buff a bersaglio singolo).
-- 🟡 **Assegnazione obiettivi/leader a inizio partita:** `IniziaPartita` non li imposta (li legge solo) → helper engine o app-layer.
-- 🟡 **Cura/heal:** verbo `cura` (riduce `Danno`), abilitato dal modello danno persistente.
+- 🟡 **Resto pool obiettivi (22):** OB-09/10/11 (creature distrutte/turno), OB-16/17 (leader in campo), OB-19/20/21 (danno subito) → servono contatori nuovi. OB-04/06/08/12/15/22 ecc. *(prossimo)*
+- ✅ **Verbi con scelta (`quantificatore: una`):** `GiocaMagia(Iid, Bersaglio?)` porta l'iid scelto; resolver `CreatureBersagliate` gestisce "una" per infliggi_danno/distruggi/applica_stat/cura. (Etb/hero-power con scelta: `EseguiAzioni/EseguiTrigger` accettano `scelta` ma le azioni non-Magia non la passano ancora.)
+- ✅ **Assegnazione obiettivi/leader a inizio partita:** `IniziaPartita(..., Leader?, Obiettivi?)` per giocatore; Setup li assegna.
+- ✅ **Cura/heal:** verbo `Cura` (riduce `Danno`, min 0).
 - ⚪ **App-layer/tuning:** validatore deckbuilding (mono-fazione + Nomadi), soglie telegrafo (0.33/0.66), tie-break multi-obiettivo stesso turno, probabilità pack in-app.
 
 **Test:** `cd engine-cs && dotnet test` (un solo run per volta, macchina lenta — vedi nota in fondo). **Build DLL Unity:** `engine-cs/build-for-unity.sh`. **Vista Unity:** `GiocoTCG/` (mano 3D con testo, `CampoView.cs`).

@@ -31,6 +31,9 @@ namespace Engine.Core
                 var mano = mescolate.Take(args.Config.ManoIniziale).ToList();
                 var mazzo = mescolate.Skip(args.Config.ManoIniziale).ToList();
 
+                string? leaderDef = args.Leader != null && id < args.Leader.Count ? args.Leader[id] : null;
+                string? obiettivo = args.Obiettivi != null && id < args.Obiettivi.Count ? args.Obiettivi[id] : null;
+
                 giocatori.Add(new Giocatore
                 {
                     Id = id,
@@ -45,6 +48,8 @@ namespace Engine.Core
                     Energia = id == 0 ? 1 : 0,
                     EnergiaMax = id == 0 ? 1 : 0,
                     Morti = 0,
+                    Leader = leaderDef != null ? new StatoLeader { DefId = leaderDef } : null,
+                    ObiettivoId = obiettivo,
                 });
             }
 
