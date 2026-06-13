@@ -19,6 +19,18 @@ namespace Engine.Core
         public int CapEnergia { get; init; }
         // v1: cap delle creature in campo per giocatore (DESIGN_V1 = 6). 0 => default 6.
         public int CapCampo { get; init; }
+        // Incremento del costo del Leader per ogni sua morte (DESIGN_V1 = +2). 0 => default 2.
+        public int IncrementoLeader { get; init; }
+    }
+
+    // Leader nella Zona di Comando. Quando entra in campo (InCampo) diventa una creatura (Iid).
+    // Alla morte torna in Zona Comando e Morti cresce (costo di rientro incrementale).
+    public sealed record StatoLeader
+    {
+        public string DefId { get; init; } = "";
+        public bool InCampo { get; init; }
+        public string? Iid { get; init; }
+        public int Morti { get; init; }
     }
 
     public sealed record CartaIstanza
@@ -56,6 +68,8 @@ namespace Engine.Core
         public int DanniAvversarioQuestoTurno { get; init; }
         // Streak: turni consecutivi in cui la condizione dell'obiettivo è soddisfatta a fine turno.
         public int StreakObiettivo { get; init; }
+        // Leader (Zona di Comando). null nei test che non lo usano.
+        public StatoLeader? Leader { get; init; }
         // Obiettivo segreto assegnato (id nel registro Obiettivi). null = nessuno (es. nei test legacy).
         public string? ObiettivoId { get; init; }
         public ProgressoObiettivo ObiettivoProgresso { get; init; }

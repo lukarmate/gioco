@@ -36,6 +36,9 @@ namespace Engine.Core
     // E2 — gioco di permanenti.
     public sealed record GiocaCreatura(string Iid) : Azione;
 
+    // Gioca il proprio Leader dalla Zona di Comando al campo (paga costo base + incremento per morte).
+    public sealed record GiocaLeader : Azione;
+
     // E3 — attiva l'abilità (trigger "attivata") di un permanente proprio in campo.
     // Tappa il permanente ed esegue i suoi effetti attivata. 1 uso/turno (finché stappato).
     public sealed record AttivaAbilita(string Iid) : Azione;

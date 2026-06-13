@@ -53,6 +53,8 @@ namespace Engine.Core
                     return ScartaImpl(stato, scarta.Iids);
                 case GiocaCreatura gc:
                     return GiocaCreaturaImpl(stato, gc.Iid);
+                case GiocaLeader _:
+                    return GiocaLeaderImpl(stato);
                 case AttivaAbilita ab:
                     return AttivaAbilitaImpl(stato, ab.Iid);
                 case Attacca atk:
@@ -131,6 +133,46 @@ namespace Engine.Core
             var eventi = new List<Evento> { new CreaturaGiocata(att, iid) };
 
             // E3 — gli effetti ETB (entra-in-campo) scattano subito dopo l'arrivo in campo.
+            var etb = Effetti.EseguiTrigger(nuovoStato, def, att, iid, Trigger.Etb);
+            nuovoStato = etb.Stato;
+            eventi.AddRange(etb.Eventi);
+
+            return Risultato.Successo(nuovoStato, eventi);
+        }
+
+        private static Risultato GiocaLeaderImpl(StatoPartita stato)
+        {
+            int att = stato.TurnoDi;
+            Giocatore g = stato.Giocatori[att];
+            if (g.Leader is null) return Risultato.Fallito("nessun leader assegnato");
+            if (g.Leader.InCampo) return Risultato.Fallito("il leader è già in campo");
+            if (!stato.Carte.TryGetValue(g.Leader.DefId, out DefCarta? def))
+                return Risultato.Fallito("definizione leader mancante");
+
+            int incremento = stato.Config.IncrementoLeader > 0 ? stato.Config.IncrementoLeader : 2;
+            int costo = (def.Costo?.Totale ?? 0) + g.Leader.Morti * incremento;
+            if (g.Energia < costo) return Risultato.Fallito("energia insufficiente");
+
+            int cap = stato.Config.CapCampo > 0 ? stato.Config.CapCampo : 6;
+            if (g.Campo.Count(c => ECreatura(stato, c)) >= cap)
+                return Risultato.Fallito("campo pieno");
+
+            // iid deterministico (replay-stabile): leader-<giocatore>-<numero morti>.
+            string iid = $"leader-{att}-{g.Leader.Morti}";
+            var inCampo = new CartaIstanza
+            {
+                Iid = iid, DefId = g.Leader.DefId, Proprietario = att, EntrataQuestoTurno = true,
+            };
+            var nuovo = g with
+            {
+                Campo = g.Campo.Concat(new[] { inCampo }).ToList(),
+                Energia = g.Energia - costo,
+                Leader = g.Leader with { InCampo = true, Iid = iid },
+            };
+            var nuovoStato = stato with { Giocatori = stato.Giocatori.Select((gg, i) => i == att ? nuovo : gg).ToArray() };
+            var eventi = new List<Evento> { new LeaderGiocato(att, iid) };
+
+            // Il leader giocato scatena i suoi effetti ETB come una creatura.
             var etb = Effetti.EseguiTrigger(nuovoStato, def, att, iid, Trigger.Etb);
             nuovoStato = etb.Stato;
             eventi.AddRange(etb.Eventi);
@@ -287,17 +329,27 @@ namespace Engine.Core
             {
                 var rimaste = new List<CartaIstanza>();
                 var cimitero = new List<CartaIstanza>(g.Cimitero);
+                StatoLeader? leader = g.Leader;
                 foreach (var c in g.Campo)
                 {
                     if (ECreatura(stato, c) && c.Danno >= Effetti.StatEffettive(stato, c).Def)
                     {
-                        cimitero.Add(c with { Danno = 0 });
-                        ev.Add(new CreaturaDistrutta(c.Iid, c.Proprietario));
-                        mortiInfo.Add((c.Iid, c.DefId, c.Proprietario));
+                        // Leader: non va al cimitero, torna in Zona di Comando (Morti++).
+                        if (leader is { InCampo: true } && leader.Iid == c.Iid)
+                        {
+                            leader = leader with { InCampo = false, Iid = null, Morti = leader.Morti + 1 };
+                            ev.Add(new LeaderTornatoInComando(g.Id, leader.Morti));
+                        }
+                        else
+                        {
+                            cimitero.Add(c with { Danno = 0 });
+                            ev.Add(new CreaturaDistrutta(c.Iid, c.Proprietario));
+                            mortiInfo.Add((c.Iid, c.DefId, c.Proprietario));
+                        }
                     }
                     else rimaste.Add(c);
                 }
-                return g with { Campo = rimaste, Cimitero = cimitero };
+                return g with { Campo = rimaste, Cimitero = cimitero, Leader = leader };
             }).ToArray();
             stato = stato with { Giocatori = giocatori };
             return Effetti.EseguiMorti(stato, mortiInfo, ev);
