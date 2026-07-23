@@ -37,6 +37,9 @@ Ordine di priorità:
 
 > ⚠️ Le sezioni datate qui sotto sono il **log cronologico** del lavoro (incluso il vecchio modello a fasi/mana E1-E2-E4, poi sostituito). Per lo stato vero leggi questo blocco + `DESIGN_V1.md`.
 
+### 📌 TODO ambiente Unity
+- ⬜ **Trim `GiocoTCG/Packages/manifest.json`** (avvio Unity lentissimo, ~20 min sullo splash "Registering packages"). **Con Unity CHIUSO**, rimuovere i pacchetti inutili del template URP: `com.unity.collab-proxy` (Version Control/Plastic — prima causa di hang all'avvio), `com.unity.visualscripting`, `com.unity.multiplayer.center`, `com.unity.ai.navigation` (eventualmente `timeline`). Tenere: URP, ugui (TMP), inputsystem, test-framework, ide.rider/visualstudio. Poi riaprire → avvio più veloce.
+
 ---
 
 ## ⚠️ DECISIONE 2026-06-10: SI PASSA A UNITY (C#)

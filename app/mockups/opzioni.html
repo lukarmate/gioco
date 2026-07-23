@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<!--
+  MOCKUP Opzioni — Gioco TCG (design-first, Task 0)
+  Stessa palette/font della Home. Scostamenti approvati: (nessuno per ora)
+-->
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gioco — Opzioni (mockup)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Crimson+Text:ital@0;1&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --gold:#c9a84c; --gold-dim:rgba(201,168,76,.6);
+    --bg-top:#050508; --bg-bot:#0c0618; --cosmic:rgba(100,60,180,.6); --text:#e8e2d0;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#111;display:flex;justify-content:center;align-items:center;min-height:100vh;font-family:'Cinzel',serif;padding:30px}
+  .phone{
+    width:390px;height:844px;border-radius:38px;overflow:hidden;position:relative;
+    background:linear-gradient(180deg,var(--bg-top),var(--bg-bot));
+    box-shadow:0 0 0 10px #1a1a1a,0 30px 80px rgba(0,0,0,.7);
+    display:flex;flex-direction:column;padding:0 16px;
+  }
+  .header{display:flex;align-items:center;justify-content:space-between;padding:50px 4px 14px}
+  .back{color:var(--gold);font-size:15px;cursor:pointer}
+  .h-title{color:var(--gold);font-size:20px;font-weight:700;letter-spacing:1.5px}
+
+  .scroll{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:16px;padding-bottom:30px}
+  .panel{background:rgba(0,0,0,.55);border:1px solid var(--gold-dim);border-radius:12px;padding:16px}
+  .section{color:var(--gold);font-size:12px;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px}
+
+  .row{display:flex;align-items:center;justify-content:space-between;padding:8px 0}
+  .label{color:var(--text);font-size:15px}
+
+  /* slider */
+  .slider-head{display:flex;justify-content:space-between;align-items:baseline}
+  .pct{color:var(--gold);font-size:12px}
+  .track{height:8px;border:1px solid var(--gold-dim);border-radius:4px;background:rgba(0,0,0,.7);overflow:hidden;margin-top:6px}
+  .fill{height:100%;background:var(--gold)}
+
+  /* toggle */
+  .tg{width:46px;height:26px;border-radius:13px;border:1px solid var(--gold-dim);background:rgba(0,0,0,.5);position:relative;padding:2px;cursor:pointer}
+  .tg .knob{width:20px;height:20px;border-radius:50%;background:var(--gold-dim);position:absolute;top:2px;left:2px;transition:.15s}
+  .tg.on{border-color:var(--gold);background:rgba(201,168,76,.3)}
+  .tg.on .knob{left:22px;background:var(--gold)}
+
+  /* stepper */
+  .stepper{display:flex;align-items:center;gap:14px}
+  .arrow{color:var(--gold);font-size:20px;cursor:pointer;padding:0 4px}
+  .value{color:var(--gold);font-size:15px;min-width:70px;text-align:center}
+
+  .link{color:var(--gold);font-size:15px;margin-top:8px;cursor:pointer}
+  .legal{color:var(--gold-dim);font-family:'Crimson Text',serif;font-size:15px;line-height:1.7}
+
+  .caption{color:#888;font-family:system-ui;font-size:13px;text-align:center;margin-top:14px}
+  .scroll::-webkit-scrollbar{width:4px}
+  .scroll::-webkit-scrollbar-thumb{background:var(--gold-dim);border-radius:2px}
+</style>
+</head>
+<body>
+  <div>
+    <div class="phone">
+      <div class="header">
+        <div class="back">‹ Indietro</div>
+        <div class="h-title">IMPOSTAZIONI</div>
+      </div>
+
+      <div class="scroll">
+        <div class="panel">
+          <div class="section">Audio</div>
+          <div class="slider-head"><span class="label">Musica</span><span class="pct">70%</span></div>
+          <div class="track"><div class="fill" style="width:70%"></div></div>
+          <div class="slider-head" style="margin-top:12px"><span class="label">Effetti</span><span class="pct">85%</span></div>
+          <div class="track"><div class="fill" style="width:85%"></div></div>
+        </div>
+
+        <div class="panel">
+          <div class="section">Grafica</div>
+          <div class="row"><span class="label">Animazioni carte</span><div class="tg on"><div class="knob"></div></div></div>
+          <div class="row"><span class="label">Riduci movimento</span><div class="tg"><div class="knob"></div></div></div>
+          <div class="row"><span class="label">Qualità effetti</span>
+            <div class="stepper"><span class="arrow">‹</span><span class="value">Alta</span><span class="arrow">›</span></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="section">Lingua</div>
+          <div class="row"><span class="label">Lingua</span>
+            <div class="stepper"><span class="arrow">‹</span><span class="value">Italiano</span><span class="arrow">›</span></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="section">Account</div>
+          <div class="row"><span class="label">Notifiche</span><div class="tg on"><div class="knob"></div></div></div>
+          <div class="link">Accedi / Logout</div>
+        </div>
+
+        <div class="panel">
+          <div class="section">Legale</div>
+          <div class="legal">Privacy · Termini · Crediti<br>Versione 1.0.0</div>
+        </div>
+      </div>
+    </div>
+    <div class="caption">Opzioni (390×844)</div>
+  </div>
+</body>
+</html>

@@ -57,3 +57,39 @@ Struttura: **3 Tragedie + 3 Benedizioni per fazione**. Meccanica Eco introdotta 
 - [ ] 4.3 — Est
 - [ ] 4.4 — Ovest
 - [ ] 4.5 — Centro
+
+---
+
+# MOTORE — Leader-avatar Start Mobile (formato senza terre)
+
+> Update socio (2026-06-22): 5 Leader-avatar riscritti in `FORMATO_START_MOBILE/leader/` + `DESIGN_V1.md`, pushati su main. NON ancora pullati in locale (qui no git). Nuovo modello: Forza/Costituzione + Punti Vita per-Leader (Xirlia 35, Shai 25, Kazet 20, Marika 32, Vaelos 30) + Passiva + Hero Power. Via ATK/DEF + Evoluzione + Rientro.
+>
+> Vincolo socio: NON partire sui Leader finché non ci si sente. Combat creature attacco/blocco OK.
+
+## Verdetto carico motore (analisi su engine-cs ~1657 righe core)
+
+3 meccaniche su 4 leggere, 1 pesante. Gestibile se si isola il flip.
+
+- [ ] **Punti Vita per-Leader (banale)** — già c'è `HpIniziali` in `ConfigPartita` + `Hp` su `Giocatore`. Vita asimmetrica = init diverso. BLOCCATO da domanda design sotto.
+- [ ] **Assalto N (leggero)** — costo energia su dichiarazione attacco Leader + flag once/turn + no-attacco-T1 (no Velocità). Pattern già esistente: `EntrataQuestoTurno`/summoning sickness, `AttacchiQuestoTurno`. Check su declare → paga → set flag.
+- [ ] **Costituzione-corazza solo in attacco (medio)** — vive nel resolver combat nuovo (attaccante/bloccante Magic). Ramo: se attaccante==Leader → Costituzione assorbe danno bloccante, eccesso → Punti Vita. In difesa Leader NON usa Forza/Costituzione. Dipende da combat creature fatto.
+- [ ] **Flip = trigger di stato off-turn (PESANTE — qui sta il "rifare")** — motore ora event-driven turn-based, niente checker continuo. Flip "appena condizione vera, anche turno avversario" = serve loop stile state-based-action dopo ogni mutazione, entrambi i turni. Flip permanente/una-tantum/irreversibile, mantiene Punti Vita correnti, cambia solo Forza/Costituzione + abilità.
+
+## Regole anti-rifacimento per il flip
+
+- [ ] **Un solo punto di check** — agganciare `ControllaFlip(stato)` allo stream `Evento` (già emessi per tutto). Dopo ogni evento risolto → check. NON sparpagliare.
+- [ ] **Condizioni flip ENUMERATE, non codice per-Leader** — set chiuso di predicati data-driven (`PuntiVita <= X`, `ControlliCreature >= N`, `AvversarioSubito >= N danno`...). Ogni Leader sceglie predicato+soglia sulla carta. Zero `if (leader=="Xirlia")` nel motore. Testabile, no rifacimenti quando si aggiungono Leader.
+
+## DOMANDA BLOCCANTE (rispondere prima di codice)
+
+- [ ] **Punti Vita del Leader = vita del giocatore (perdi a 0), o corpo separato che muore mentre continui?** Cambia modello vittoria/combat. Ipotesi: avatar = giocatore (Punti Vita = loss condition), coerente con "Start Mobile niente terre, Leader-avatar". Collegata: avversario col combat Magic attacca direttamente il Leader-faccia, fermato solo da blocchi/magie?
+
+## Sequenza (d'accordo col socio: non partire sui Leader ora)
+
+- [ ] 1. Merge combat creature attacco/blocco, suite verde (Assalto + Costituzione ci montano sopra).
+- [ ] 2. Leader-combat layer (Punti Vita + Assalto + Costituzione-corazza).
+- [ ] 3. Flip system = milestone a sé, dopo che 1+2 reggono.
+
+## Domanda aperta in discussione
+
+- [ ] Sviluppo emergent? (vedi conversazione 2026-06-22)

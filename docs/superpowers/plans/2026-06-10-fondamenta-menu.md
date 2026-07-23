@@ -1056,7 +1056,7 @@ export default function Home() {
       </View>
 
       <View style={styles.footer}>
-        <Text style={styles.currency}>💠 1.2k   🔮 340   ✦ 12</Text>
+        <Text style={styles.currency}>Frammenti 1.2k  ◆  Essenza 340  ◆  Stelle 12</Text>
         <Text style={styles.version}>v1.0.0</Text>
       </View>
     </ScreenBg>
