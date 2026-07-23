@@ -10,6 +10,13 @@ app/dist/
 .mcp.json
 .playwright-mcp/
 
+# Progetto Unity (locale) — la parte Unity la rifà Alessandro da zero
+GiocoTCG/
+
+# Reference art pesante (122 MB) — condivisa fuori repo, non serve al codice
+Design Carte/
+docs/HANDOFF 2.md
+
 # Sistema
 .DS_Store
 *.log
